@@ -77,12 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       debugPrint("Error loading data: $e");
       setState(() {
-        data = [
-          DataPoint("Jan", 30),
-          DataPoint("Fév", 40),
-          DataPoint("Mars", 60),
-          DataPoint("Avr", 50),
-        ];
+        data = [];
       });
     } finally {
       _calculateStats();
