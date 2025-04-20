@@ -23,16 +23,16 @@ class _HomeScreenState extends State<HomeScreen>
   int _selectedIndex = 0;
   final GlobalKey<CartographyScreenState> _cartographyKey = GlobalKey();
 
-  // Écrans disponibles
+  // Écrans disponibles dans l'ordre demandé
   late final List<Widget> _screens;
   final List<String> _screenTitles = [
     'Tableau de bord',
     'Cartographie',
     'Météo',
+    'Irrigation',
+    'Analyse IA',
     'Chatbot IA',
     'Communauté',
-    'Analyse IA',
-    'Irrigation',
     'À Propos'
   ];
 
@@ -56,10 +56,10 @@ class _HomeScreenState extends State<HomeScreen>
       DashboardScreen(),
       CartographyScreen(key: _cartographyKey),
       WeatherScreen(),
+      IrrigationScreen(),
+      AIAnalysisScreen(),
       ChatbotScreen(),
       CommunityScreen(),
-      AIAnalysisScreen(),
-      IrrigationScreen(),
       AboutUsScreen(),
     ].animate(delay: 300.ms).fadeIn(duration: 500.ms);
   }
@@ -222,13 +222,29 @@ class _HomeScreenState extends State<HomeScreen>
         padding: EdgeInsets.zero,
         children: [
           _buildDrawerHeader(user),
-          ..._buildDrawerItems(),
+          // Première partie du menu dans l'ordre demandé
+          _buildDrawerItem(0, Icons.dashboard, 'Tableau de bord'),
+          _buildDrawerItem(1, Icons.map, 'Cartographie'),
+          _buildDrawerItem(2, Icons.cloud, 'Météo'),
+          _buildDrawerItem(3, Icons.water, 'Irrigation'),
+          _buildDrawerItem(4, Icons.analytics, 'Analyse IA'),
+          _buildDrawerItem(5, Icons.chat, 'Chatbot IA'),
+          _buildDrawerItem(6, Icons.people, 'Communauté'),
+
+          // Ligne de séparation
           Divider(),
+
+          // Paramètres
           ListTile(
             leading: Icon(Icons.settings),
             title: Text('Paramètres'),
             onTap: () => _navigateToSettings(context),
           ),
+
+          // À Propos
+          _buildDrawerItem(7, Icons.info, 'À Propos'),
+
+          // Déconnexion si connecté
           if (user.name != null)
             ListTile(
               leading: Icon(Icons.logout, color: Colors.red),
@@ -237,6 +253,20 @@ class _HomeScreenState extends State<HomeScreen>
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDrawerItem(int index, IconData icon, String title) {
+    return ListTile(
+      leading: Icon(icon, color: _getIconColor(index)),
+      title: Text(
+        title,
+        style: TextStyle(
+          color: _getTextColor(index),
+          fontWeight: _getFontWeight(index),
+        ),
+      ),
+      onTap: () => _onDrawerItemTap(index),
     );
   }
 
@@ -294,23 +324,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  List<Widget> _buildDrawerItems() {
-    return List.generate(_screens.length, (index) {
-      final icon = _getIconForIndex(index);
-      return ListTile(
-        leading: Icon(icon, color: _getIconColor(index)),
-        title: Text(
-          _screenTitles[index],
-          style: TextStyle(
-            color: _getTextColor(index),
-            fontWeight: _getFontWeight(index),
-          ),
-        ),
-        onTap: () => _onDrawerItemTap(index),
-      );
-    });
-  }
-
   void _onDrawerItemTap(int index) {
     setState(() => _selectedIndex = index);
     Navigator.pop(context);
@@ -330,29 +343,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   // Helpers
-  IconData _getIconForIndex(int index) {
-    switch (index) {
-      case 0:
-        return Icons.dashboard;
-      case 1:
-        return Icons.map;
-      case 2:
-        return Icons.cloud;
-      case 3:
-        return Icons.chat;
-      case 4:
-        return Icons.people;
-      case 5:
-        return Icons.analytics;
-      case 6:
-        return Icons.water;
-      case 7:
-        return Icons.info;
-      default:
-        return Icons.error;
-    }
-  }
-
   Color _getIconColor(int index) {
     return _selectedIndex == index ? Colors.green[800]! : Colors.grey[700]!;
   }
