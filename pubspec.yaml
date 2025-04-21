@@ -81,16 +81,16 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - lib/assets/images/
-    - lib/assets/svgs/
-    - lib/assets/partners/
-    - lib/assets/animations/
+
     - lib/assets/images/fao_logo.png
     - lib/assets/images/ci_logo.png
     - lib/assets/images/afd_logo.png
     - lib/assets/images/cnra_logo.png
     - lib/assets/animations/ai_analysis.json
     - 'lib/assets/images/farm_bg.jpg'
+    - 'lib/assets/images/Registerimg.png'
+    - 'lib/assets/images/rgstimg.png'
+    - lib/assets/images/logo.png
 
 dependency_overrides:
   async: ^2.13.0

@@ -50,7 +50,6 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       CurvedAnimation(
         parent: _titleAnimationController,
         curve: Interval(0.0, 0.5, curve: Curves.easeIn),
-      ),
     );
 
     _titleSlideAnimation = Tween<Offset>(
@@ -60,7 +59,6 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       CurvedAnimation(
         parent: _titleAnimationController,
         curve: Interval(0.3, 1.0, curve: Curves.easeOut),
-      ),
     );
 
     _formFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -160,186 +158,210 @@ class _RegistrationScreenState extends State<RegistrationScreen>
           ),
         ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              FadeTransition(
-                opacity: _formFadeAnimation,
-                child: SlideTransition(
-                  position: _formSlideAnimation,
-                  child: Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                      child: DropdownButtonFormField<bool>(
-                        value: _isRegisterMode,
-                        decoration: InputDecoration(
-                          labelText: 'Choisissez une action',
-                          border: InputBorder.none,
-                          prefixIcon: Icon(Icons.swap_horiz),
+      body: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage("lib/assets/images/Registerimg.png"),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                FadeTransition(
+                  opacity: _formFadeAnimation,
+                  child: SlideTransition(
+                    position: _formSlideAnimation,
+                    child: Card(
+                      color: Colors.white.withOpacity(0.9),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: DropdownButtonFormField<bool>(
+                          value: _isRegisterMode,
+                          decoration: InputDecoration(
+                            labelText: 'Choisissez une action',
+                            border: InputBorder.none,
+                            prefixIcon: Icon(Icons.swap_horiz),
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: false,
+                              child: Text('Se connecter'),
+                            ),
+                            DropdownMenuItem(
+                              value: true,
+                              child: Text('S\'inscrire'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            _toggleRegisterMode();
+                          },
                         ),
-                        items: const [
-                          DropdownMenuItem(
-                            value: false,
-                            child: Text('Se connecter'),
-                          ),
-                          DropdownMenuItem(
-                            value: true,
-                            child: Text('S\'inscrire'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          _toggleRegisterMode();
-                        },
                       ),
                     ),
                   ),
                 ),
-              ),
-              SizedBox(height: 20),
-              if (_isRegisterMode)
+                SizedBox(height: 20),
+                if (_isRegisterMode)
+                  FadeTransition(
+                    opacity: _formFadeAnimation,
+                    child: SlideTransition(
+                      position: _formSlideAnimation,
+                      child: TextFormField(
+                        controller: _fullNameController,
+                        decoration: InputDecoration(
+                          labelText: 'Nom complet *',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.person),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.9),
+                        ),
+                        validator: (value) {
+                          if (_isRegisterMode &&
+                              (value == null || value.trim().isEmpty)) {
+                            return 'Ce champ est obligatoire';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ),
+                if (_isRegisterMode) SizedBox(height: 20),
                 FadeTransition(
                   opacity: _formFadeAnimation,
                   child: SlideTransition(
                     position: _formSlideAnimation,
                     child: TextFormField(
-                      controller: _fullNameController,
+                      controller: _emailController,
                       decoration: InputDecoration(
-                        labelText: 'Nom complet *',
+                        labelText: 'Email *',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person),
+                        prefixIcon: Icon(Icons.email),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.9),
                       ),
                       validator: (value) {
-                        if (_isRegisterMode &&
-                            (value == null || value.trim().isEmpty)) {
+                        if (value == null || value.isEmpty) {
                           return 'Ce champ est obligatoire';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Email invalide';
                         }
                         return null;
                       },
                     ),
                   ),
                 ),
-              if (_isRegisterMode) SizedBox(height: 20),
-              FadeTransition(
-                opacity: _formFadeAnimation,
-                child: SlideTransition(
-                  position: _formSlideAnimation,
-                  child: TextFormField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.email),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Ce champ est obligatoire';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Email invalide';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              FadeTransition(
-                opacity: _formFadeAnimation,
-                child: SlideTransition(
-                  position: _formSlideAnimation,
-                  child: TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Mot de passe *',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Ce champ est obligatoire';
-                      }
-                      if (value.length < 6) {
-                        return '6 caractères minimum';
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              if (_isRegisterMode)
+                SizedBox(height: 20),
                 FadeTransition(
                   opacity: _formFadeAnimation,
                   child: SlideTransition(
                     position: _formSlideAnimation,
                     child: TextFormField(
-                      controller: _confirmPasswordController,
-                      obscureText: _obscureConfirmPassword,
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: 'Confirmer le mot de passe *',
+                        labelText: 'Mot de passe *',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: Icon(Icons.lock),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirmPassword
+                          icon: Icon(_obscurePassword
                               ? Icons.visibility_off
                               : Icons.visibility),
                           onPressed: () {
                             setState(() {
-                              _obscureConfirmPassword =
-                                  !_obscureConfirmPassword;
+                              _obscurePassword = !_obscurePassword;
                             });
                           },
                         ),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.9),
                       ),
                       validator: (value) {
-                        if (_isRegisterMode &&
-                            (value == null || value.isEmpty)) {
+                        if (value == null || value.isEmpty) {
                           return 'Ce champ est obligatoire';
                         }
-                        if (_isRegisterMode &&
-                            value != _passwordController.text) {
-                          return 'Les mots de passe ne correspondent pas';
+                        if (value.length < 6) {
+                          return '6 caractères minimum';
                         }
                         return null;
                       },
                     ),
                   ),
                 ),
-              SizedBox(height: 20),
-              if (_errorMessage != null)
-                Text(
-                  _errorMessage!,
-                  style: TextStyle(color: Colors.red),
-                  textAlign: TextAlign.center,
+                SizedBox(height: 20),
+                if (_isRegisterMode)
+                  FadeTransition(
+                    opacity: _formFadeAnimation,
+                    child: SlideTransition(
+                      position: _formSlideAnimation,
+                      child: TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: _obscureConfirmPassword,
+                        decoration: InputDecoration(
+                          labelText: 'Confirmer le mot de passe *',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscureConfirmPassword
+                                ? Icons.visibility_off
+                                : Icons.visibility),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword =
+                                    !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.9),
+                        ),
+                        validator: (value) {
+                          if (_isRegisterMode &&
+                              (value == null || value.isEmpty)) {
+                            return 'Ce champ est obligatoire';
+                          }
+                          if (_isRegisterMode &&
+                              value != _passwordController.text) {
+                            return 'Les mots de passe ne correspondent pas';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ),
+                SizedBox(height: 20),
+                if (_errorMessage != null)
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ElevatedButton(
+                  onPressed: _submitForm,
+                  child: Text(_isRegisterMode ? "S'inscrire" : "Se connecter"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green[800],
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    textStyle: TextStyle(fontSize: 18),
+                  ),
                 ),
-              ElevatedButton(
-                onPressed: _submitForm,
-                child: Text(_isRegisterMode ? "S'inscrire" : "Se connecter"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green[800],
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  textStyle: TextStyle(fontSize: 18),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
