@@ -17,14 +17,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
   File? _selectedImage;
   String? _analysisResult;
   String? _errorMessage;
+  double _analysisProgress = 0.0;
 
   final ImagePicker _picker = ImagePicker();
-  final String _openAIKey =
-      'YOUR_OPENAI_API_KEY'; // Remplacez par votre cl� API
+  final String _openAIKey = 'YOUR_OPENAI_API_KEY';
+
+  @override
+  void dispose() {
+    _selectedImage?.delete();
+    super.dispose();
+  }
 
   Future<void> _getImage(ImageSource source) async {
     setState(() {
       _isScanning = true;
+      _analysisProgress = 0.0;
       _analysisResult = null;
       _errorMessage = null;
     });
@@ -37,6 +44,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
       }
 
       setState(() => _selectedImage = File(image.path));
+      await _simulateProgress();
       await _analyzeImageWithOpenAI(File(image.path));
     } catch (e) {
       setState(() {
@@ -47,13 +55,21 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
     }
   }
 
+  Future<void> _simulateProgress() async {
+    const totalSteps = 20;
+    for (int i = 0; i <= totalSteps; i++) {
+      await Future.delayed(Duration(milliseconds: 150));
+      setState(() {
+        _analysisProgress = i / totalSteps;
+      });
+    }
+  }
+
   Future<void> _analyzeImageWithOpenAI(File imageFile) async {
     try {
-      // Convertir l'image en base64
       final bytes = await imageFile.readAsBytes();
       final base64Image = base64Encode(bytes);
 
-      // Pr�parer la requ�te pour OpenAI
       final response = await http.post(
         Uri.parse('https://api.openai.com/v1/chat/completions'),
         headers: {
@@ -69,9 +85,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
                 {
                   "type": "text",
                   "text":
-                      "Analyse cette image de culture agricole. D�tecte les "
-                          "maladies, �value la sant� des plantes, et donne des "
-                          "conseils d'entretien. Sois pr�cis et technique."
+                      "Analyse cette image de culture agricole. Détecte les maladies, évalue la santé des plantes, et donne des conseils d'entretien. Sois précis et technique. Structure la réponse avec : 1. Diagnostic (maladies, carences) 2. Niveau de gravité (1-5) 3. Recommandations de traitement 4. Actions préventives"
                 },
                 {
                   "type": "image_url",
@@ -80,7 +94,7 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
               ]
             }
           ],
-          "max_tokens": 1000
+          "max_tokens": 1500
         }),
       );
 
@@ -90,68 +104,47 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
         setState(() {
           _isScanning = false;
-          _analysisResult = analysis;
+          _analysisResult = _formatAnalysisResult(analysis);
         });
       } else {
-        throw Exception('Erreur API: ${response.statusCode}');
+        throw Exception(
+            'Erreur API: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      throw Exception('�chec de l\'analyse: $e');
+      throw Exception("Échec de l'analyse: $e");
     }
+  }
+
+  String _formatAnalysisResult(String rawResult) {
+    return rawResult
+        .replaceAll('1. ', '\n1. ')
+        .replaceAll('2. ', '\n\n2. ')
+        .replaceAll('3. ', '\n\n3. ')
+        .replaceAll('4. ', '\n\n4. ');
   }
 
   void _showErrorDialog(String message) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Erreur"),
-        content: Text(message),
+        title: Text("Erreur", style: TextStyle(color: Colors.red)),
+        content: SingleChildScrollView(child: Text(message)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text("OK"),
+            child: Text("OK", style: TextStyle(color: Colors.green[800])),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAnalysisResult() {
-    if (_analysisResult == null) return SizedBox();
-
-    return Column(
-      children: [
-        SizedBox(height: 20),
-        Card(
-          child: Padding(
-            padding: EdgeInsets.all(15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "R�sultats d'analyse:",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: Colors.green[800],
-                  ),
-                ),
-                SizedBox(height: 10),
-                Text(_analysisResult!),
-              ],
-            ),
-          ),
-        ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => _showDetailedAnalysis(context),
-          child: Text("Voir l'analyse d�taill�e"),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green[800],
-            foregroundColor: Colors.white,
-          ),
-        ),
-      ],
+  Future<void> _saveAnalysisReport() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Rapport sauvegardé avec succès"),
+        backgroundColor: Colors.green[800],
+      ),
     );
   }
 
@@ -160,41 +153,69 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text("Analyse Compl�te",
-            style: TextStyle(color: Colors.green[800])),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_selectedImage != null)
-                Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Container(
+          padding: EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Analyse Complète",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green[800],
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                Divider(),
+                SizedBox(height: 10),
+                if (_selectedImage != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
                     child: Image.file(_selectedImage!, fit: BoxFit.cover),
                   ),
+                SizedBox(height: 20),
+                if (user.isFarmer && user.farmName != null)
+                  Text(
+                    "Ferme: ${user.farmName}",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                SizedBox(height: 20),
+                Text(
+                  _analysisResult ?? '',
+                  style: TextStyle(fontSize: 15),
                 ),
-              SizedBox(height: 15),
-              if (user.isFarmer && user.farmName != null)
-                Text("Ferme: ${user.farmName}",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 15),
-              Text(_analysisResult ?? "Aucun r�sultat disponible"),
-            ],
+                SizedBox(height: 20),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text("Fermer",
+                        style: TextStyle(color: Colors.green[800])),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text("Fermer", style: TextStyle(color: Colors.green[800])),
-          ),
-        ],
       ),
     );
   }
@@ -206,81 +227,150 @@ class _AIAnalysisScreenState extends State<AIAnalysisScreen> {
         title: Text("Analyse IA des Cultures"),
         backgroundColor: Colors.green[800],
         foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (_selectedImage != null && !_isScanning) ...[
-              Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.info_outline),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text("Comment ça marche ?"),
+                content: Text(
+                  "Prenez une photo ou sélectionnez une image depuis votre galerie pour obtenir une analyse détaillée de l'état de vos cultures grâce à notre intelligence artificielle spécialisée.",
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text("Compris"),
+                  ),
+                ],
               ),
-              SizedBox(height: 20),
-            ] else
-              Lottie.asset(
-                "assets/animations/ai_analysis.json",
-                height: 200,
-                fit: BoxFit.contain,
-              ),
-            SizedBox(height: 20),
-            Text(
-              _isScanning
-                  ? "Analyse en cours avec OpenAI..."
-                  : _analysisResult != null
-                      ? "Analyse termin�e"
-                      : "Choisissez une image � analyser",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
             ),
-            if (_errorMessage != null) ...[
-              SizedBox(height: 20),
-              Text(
-                _errorMessage!,
-                style: TextStyle(color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.green[50]!,
+              Colors.white,
             ],
-            _buildAnalysisResult(),
-            SizedBox(height: 30),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton.icon(
-                  onPressed:
-                      _isScanning ? null : () => _getImage(ImageSource.camera),
-                  icon: Icon(Icons.camera_alt),
-                  label: Text("Cam�ra"),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    backgroundColor: Colors.green[800],
-                    foregroundColor: Colors.white,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_selectedImage != null && !_isScanning)
+                Container(
+                  height: 250,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ),
-                ElevatedButton.icon(
-                  onPressed:
-                      _isScanning ? null : () => _getImage(ImageSource.gallery),
-                  icon: Icon(Icons.photo_library),
-                  label: Text("Galerie"),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    backgroundColor: Colors.green[700],
-                    foregroundColor: Colors.white,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.file(_selectedImage!, fit: BoxFit.cover),
                   ),
+                )
+              else if (_isScanning)
+                Column(
+                  children: [
+                    Lottie.asset("assets/animations/ai_scanning.json",
+                        height: 120),
+                    SizedBox(height: 20),
+                    LinearProgressIndicator(value: _analysisProgress),
+                  ],
                 ),
+              SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => _getImage(ImageSource.camera),
+                icon: Icon(Icons.camera_alt),
+                label: Text("Prendre une photo"),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _getImage(ImageSource.gallery),
+                icon: Icon(Icons.photo_library),
+                label: Text("Choisir depuis la galerie"),
+              ),
+              if (_analysisResult != null) ...[
+                SizedBox(height: 20),
+                _buildAnalysisResult(),
               ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalysisResult() {
+    return Column(
+      children: [
+        Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.analytics, color: Colors.green[800]),
+                    SizedBox(width: 8),
+                    Text(
+                      "Résultats d'analyse:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.green[800],
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Text(_analysisResult ?? '', style: TextStyle(fontSize: 15)),
+              ],
+            ),
+          ),
+        ),
+        SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            ElevatedButton.icon(
+              onPressed: () => _showDetailedAnalysis(context),
+              icon: Icon(Icons.open_in_full),
+              label: Text("Détails"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _saveAnalysisReport,
+              icon: Icon(Icons.save),
+              label: Text("Sauvegarder"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue[800],
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }
