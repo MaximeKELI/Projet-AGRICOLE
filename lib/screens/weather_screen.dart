@@ -222,7 +222,7 @@ Merci de fournir des conseils spécifiques et pratiques adaptés à ces conditio
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Météo Agricole'),
+        title: const Text(''),
         backgroundColor: Colors.green,
         bottom: TabBar(
           controller: _tabController,

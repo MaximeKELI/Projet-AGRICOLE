@@ -26,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen>
   final List<String> _screenTitles = [
     'Tableau de bord',
     'Météo',
-    'Irrigation',
     'Analyse IA',
     'Chatbot IA',
     'Communauté',
@@ -52,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen>
     _screens = [
       DashboardScreen(),
       WeatherScreen(),
-      IrrigationScreen(),
       AIAnalysisScreen(),
       ChatbotScreen(),
       CommunityScreen(),
@@ -214,10 +212,10 @@ class _HomeScreenState extends State<HomeScreen>
           // Première partie du menu dans l'ordre demandé
           _buildDrawerItem(0, Icons.dashboard, 'Tableau de bord'),
           _buildDrawerItem(1, Icons.cloud, 'Météo'),
-          _buildDrawerItem(2, Icons.water, 'Irrigation'),
-          _buildDrawerItem(3, Icons.analytics, 'Analyse IA'),
-          _buildDrawerItem(4, Icons.chat, 'Chatbot IA'),
-          _buildDrawerItem(5, Icons.people, 'Communauté'),
+          //_buildDrawerItem(2, Icons.water, 'Irrigation'),
+          _buildDrawerItem(2, Icons.analytics, 'Analyse IA'),
+          _buildDrawerItem(3, Icons.chat, 'Chatbot IA'),
+          _buildDrawerItem(4, Icons.people, 'Communauté'),
 
           // Ligne de séparation
           Divider(),
@@ -230,7 +228,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
 
           // À Propos
-          _buildDrawerItem(6, Icons.info, 'À Propos'),
+          _buildDrawerItem(5, Icons.info, 'À Propos'),
 
           // Déconnexion si connecté
           if (user.name != null)
@@ -313,21 +311,36 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onDrawerItemTap(int index) {
-    setState(() => _selectedIndex = index);
-    Navigator.pop(context);
+    if (index >= 0 && index < _screens.length) {
+      setState(() => _selectedIndex = index);
+      Navigator.pop(context);
+    }
   }
 
   void _navigateToSettings(BuildContext context) {
     Navigator.pop(context);
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => SettingsScreen()),
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(),
+        fullscreenDialog: true,
+      ),
     );
   }
 
   void _logout(BuildContext context) async {
-    await Provider.of<UserModel>(context, listen: false).logout();
-    Navigator.popUntil(context, ModalRoute.withName('/'));
+    try {
+      await Provider.of<UserModel>(context, listen: false).logout();
+      if (mounted) {
+        Navigator.popUntil(context, (route) => route.isFirst);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+        );
+      }
+    }
   }
 
   // Helpers

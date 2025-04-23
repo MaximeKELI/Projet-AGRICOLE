@@ -402,7 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Tableau de Bord Agricole"),
+        title: const Text(""),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
