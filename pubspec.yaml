@@ -18,11 +18,14 @@ dependencies:
   cloud_firestore: ^5.6.5
   firebase_storage: ^12.4.4
 
+
   # 🗺️ Cartographie
   google_maps_flutter: ^2.6.0
   geolocator: ^13.0.3
-  flutter_map: ^8.1.1
+  flutter_map: ^6.1.0
   geocoding: ^3.0.0
+  latlong2: ^0.9.0
+  flutter_map_marker_cluster: ^1.1.0
 
   # 📸 Gestion médias
   image_picker: ^1.0.4
@@ -61,7 +64,7 @@ dependencies:
 
   # 📊 Data Viz
   syncfusion_flutter_charts: ^29.1.33
-  intl: ^0.20.2
+  intl: ^0.18.0
 
   # 🌐 Utilitaires
   url_launcher: ^6.2.6
@@ -73,10 +76,24 @@ dependencies:
   
   path_provider: ^2.1.1
 
+  # 🤖 Google Generative AI
+  google_generative_ai: ^0.2.0
+
+  # 🌐 WebView
+  webview_flutter: ^4.0.0
+
+  # 🌐 WebView Android
+  webview_flutter_android: ^3.0.0
+
+  # 🌐 WebView WKWebview
+  webview_flutter_wkwebview: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: any
+  mockito: ^5.4.4
+  build_runner: ^2.4.8
 
 flutter:
   uses-material-design: true

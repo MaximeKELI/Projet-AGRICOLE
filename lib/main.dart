@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:app_agrigeo/utils/theme.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/home_screen.dart';
-import 'package:app_agrigeo/screens/map_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
+import 'package:app_agrigeo/screens/map_screen.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -348,7 +349,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     );
   }
 
-  void _submitForm(BuildContext context) {
+  Future<void> _submitForm(BuildContext context) async {
     setState(() => _errorMessage = null);
 
     if (_formKey.currentState!.validate()) {
@@ -369,18 +370,43 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  final PageController _pageController = PageController();
 
+  // Définir les écrans dans l'ordre correspondant aux indices de la barre de navigation
   final List<Widget> _screens = [
-    HomeScreen(),
-    MapScreen(),
+    HomeScreen(),  // index 0
+    MapScreen(),   // index 1
   ];
 
   void _onItemTapped(int index) {
+    print('Navigation vers l\'écran: $index');
+    print('Type de l\'écran: ${_screens[index].runtimeType}');
     setState(() => _selectedIndex = index);
+    _pageController.animateToPage(
+      index,
+      duration: Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    print('Initialisation de MainScreen');
+    print('Nombre d\'écrans: ${_screens.length}');
+    print('Type du premier écran: ${_screens[0].runtimeType}');
+    print('Type du deuxième écran: ${_screens[1].runtimeType}');
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    print('Construction de MainScreen avec index: $_selectedIndex');
     return Scaffold(
       appBar: AppBar(
         title: Text(_selectedIndex == 0 ? 'Accueil' : 'Carte'),
@@ -393,8 +419,13 @@ class _MainScreenState extends State<MainScreen> {
         ],
       ),
       body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
+        child: PageView(
+          controller: _pageController,
+          onPageChanged: (index) {
+            print('Changement de page vers: $index');
+            print('Type de l\'écran: ${_screens[index].runtimeType}');
+            setState(() => _selectedIndex = index);
+          },
           children: _screens,
         ),
       ),

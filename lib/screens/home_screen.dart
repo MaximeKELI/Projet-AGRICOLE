@@ -4,14 +4,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
 import 'package:app_agrigeo/screens/dashboard_screen.dart';
-import 'package:app_agrigeo/screens/cartography_screen.dart';
-import 'package:app_agrigeo/screens/weather_screen.dart';
 import 'package:app_agrigeo/screens/chatbot_screen.dart';
 import 'package:app_agrigeo/screens/community_screen.dart';
 import 'package:app_agrigeo/screens/ai_analysis_screen.dart';
 import 'package:app_agrigeo/screens/irrigation_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
+import 'package:app_agrigeo/screens/weather_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -21,13 +20,11 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   int _selectedIndex = 0;
-  final GlobalKey<CartographyScreenState> _cartographyKey = GlobalKey();
 
   // Écrans disponibles dans l'ordre demandé
   late final List<Widget> _screens;
   final List<String> _screenTitles = [
     'Tableau de bord',
-    'Cartographie',
     'Météo',
     'Irrigation',
     'Analyse IA',
@@ -54,7 +51,6 @@ class _HomeScreenState extends State<HomeScreen>
   void _initScreens() {
     _screens = [
       DashboardScreen(),
-      CartographyScreen(key: _cartographyKey),
       WeatherScreen(),
       IrrigationScreen(),
       AIAnalysisScreen(),
@@ -143,14 +139,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   List<Widget> _buildAppBarActions() {
-    return [
-      if (_selectedIndex == 1)
-        IconButton(
-          icon: Icon(Icons.gps_fixed, color: Colors.white),
-          onPressed: () => _cartographyKey.currentState?.centerToLocation(),
-          tooltip: 'Centrer sur ma position',
-        ).animate().fadeIn(delay: 200.ms),
-    ];
+    return [];
   }
 
   Widget _buildAnimatedBackground() {
@@ -224,12 +213,11 @@ class _HomeScreenState extends State<HomeScreen>
           _buildDrawerHeader(user),
           // Première partie du menu dans l'ordre demandé
           _buildDrawerItem(0, Icons.dashboard, 'Tableau de bord'),
-          _buildDrawerItem(1, Icons.map, 'Cartographie'),
-          _buildDrawerItem(2, Icons.cloud, 'Météo'),
-          _buildDrawerItem(3, Icons.water, 'Irrigation'),
-          _buildDrawerItem(4, Icons.analytics, 'Analyse IA'),
-          _buildDrawerItem(5, Icons.chat, 'Chatbot IA'),
-          _buildDrawerItem(6, Icons.people, 'Communauté'),
+          _buildDrawerItem(1, Icons.cloud, 'Météo'),
+          _buildDrawerItem(2, Icons.water, 'Irrigation'),
+          _buildDrawerItem(3, Icons.analytics, 'Analyse IA'),
+          _buildDrawerItem(4, Icons.chat, 'Chatbot IA'),
+          _buildDrawerItem(5, Icons.people, 'Communauté'),
 
           // Ligne de séparation
           Divider(),
@@ -242,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen>
           ),
 
           // À Propos
-          _buildDrawerItem(7, Icons.info, 'À Propos'),
+          _buildDrawerItem(6, Icons.info, 'À Propos'),
 
           // Déconnexion si connecté
           if (user.name != null)
@@ -275,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: Colors.green[800],
         image: DecorationImage(
-          image: AssetImage('assets/images/agriculture_bg.jpg'),
+          image: AssetImage('lib/assets/images/farm_bg.jpg'),
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             Colors.green[800]!.withOpacity(0.7),

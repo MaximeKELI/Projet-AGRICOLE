@@ -50,6 +50,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       CurvedAnimation(
         parent: _titleAnimationController,
         curve: Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
     );
 
     _titleSlideAnimation = Tween<Offset>(
@@ -59,6 +60,7 @@ class _RegistrationScreenState extends State<RegistrationScreen>
       CurvedAnimation(
         parent: _titleAnimationController,
         curve: Interval(0.3, 1.0, curve: Curves.easeOut),
+      ),
     );
 
     _formFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(

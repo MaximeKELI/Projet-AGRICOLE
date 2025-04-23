@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class WeatherService {
-  static const String apiKey = "TA_CLEF_API"; // Remplace avec ta clé OpenWeatherMap
+  static const String apiKey = "539b5e304cc283331365be92545f77bd"; // Remplace avec ta clé OpenWeatherMap
   static const String baseUrl = "https://api.openweathermap.org/data/2.5/weather";
 
   static Future<double> getSoilMoisture(double lat, double lon) async {
