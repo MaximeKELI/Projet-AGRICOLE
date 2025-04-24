@@ -8,54 +8,112 @@ class AppTheme {
   static const Color errorRed = Color(0xFFD32F2F); // Rouge d'erreur
   static const Color soilBeige = Color(0xFFFFF3E0); // Beige sol
 
-  // Thème clair
-  static final ThemeData lightTheme = ThemeData(
-    useMaterial3: true,
-    colorScheme: const ColorScheme.light(
-      primary: primaryGreen,
-      secondary: earthBrown,
-      tertiary: sunAmber,
-      error: errorRed,
-      background: soilBeige,
-    ),
-    textTheme: _agricultureTextTheme,
-    appBarTheme: const AppBarTheme(
-      backgroundColor: primaryGreen,
-      foregroundColor: Colors.white,
-      elevation: 4,
-    ),
-    elevatedButtonTheme: _elevatedButtonTheme,
-    outlinedButtonTheme: _outlinedButtonTheme,
-    inputDecorationTheme: _inputDecorationTheme,
-    cardTheme: _cropCardTheme,
-  );
+  static const String _themeKey = 'isDarkMode';
 
-  // Thème sombre
-  static final ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    colorScheme: const ColorScheme.dark(
-      primary: primaryGreen,
-      secondary: earthBrown,
-      tertiary: sunAmber,
-      error: errorRed,
-      background: Color(0xFF121212),
-    ),
-    textTheme: _agricultureTextTheme.apply(
-      displayColor: Colors.white,
-      bodyColor: Colors.white70,
-    ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: primaryGreen,
-      foregroundColor: Colors.white,
-      elevation: 4,
-    ),
-    elevatedButtonTheme: _elevatedButtonTheme,
-    outlinedButtonTheme: _outlinedButtonTheme,
-    inputDecorationTheme: _inputDecorationTheme,
-    cardTheme: _cropCardTheme.copyWith(
-      color: const Color(0xFF1E1E1E),
-    ),
-  );
+  static ThemeData get lightTheme {
+    return ThemeData(
+      brightness: Brightness.light,
+      primarySwatch: Colors.green,
+      primaryColor: Colors.green[800],
+      scaffoldBackgroundColor: Colors.white,
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.green[800],
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      cardTheme: CardTheme(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.black87),
+        bodyMedium: TextStyle(color: Colors.black87),
+      ),
+      iconTheme: const IconThemeData(color: Colors.black87),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.green[800],
+        unselectedItemColor: Colors.grey,
+      ),
+      colorScheme: ColorScheme.light(
+        primary: Colors.green[800]!,
+        secondary: Colors.green[600]!,
+        surface: Colors.white,
+        background: Colors.white,
+        error: Colors.red,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: Colors.black87,
+        onBackground: Colors.black87,
+        onError: Colors.white,
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    return ThemeData(
+      brightness: Brightness.dark,
+      primarySwatch: Colors.green,
+      primaryColor: Colors.green[800],
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      appBarTheme: AppBarTheme(
+        backgroundColor: Colors.green[900],
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        titleTextStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      cardTheme: CardTheme(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        color: const Color(0xFF1E1E1E),
+      ),
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(color: Colors.white),
+        bodyMedium: TextStyle(color: Colors.white70),
+      ),
+      iconTheme: const IconThemeData(color: Colors.white),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: const Color(0xFF1E1E1E),
+        selectedItemColor: Colors.green[400],
+        unselectedItemColor: Colors.grey,
+      ),
+      colorScheme: ColorScheme.dark(
+        primary: Colors.green[800]!,
+        secondary: Colors.green[600]!,
+        surface: const Color(0xFF1E1E1E),
+        background: const Color(0xFF121212),
+        error: Colors.red,
+        onPrimary: Colors.white,
+        onSecondary: Colors.white,
+        onSurface: Colors.white,
+        onBackground: Colors.white,
+        onError: Colors.white,
+      ),
+    );
+  }
+
+  static Future<bool> getThemeMode() async {
+    // This method is no longer used as the theme mode is managed by the ThemeProvider
+    throw UnimplementedError();
+  }
+
+  static Future<void> setThemeMode(bool isDarkMode) async {
+    // This method is no longer used as the theme mode is managed by the ThemeProvider
+    throw UnimplementedError();
+  }
 
   // TextTheme personnalisé
   static const TextTheme _agricultureTextTheme = TextTheme(
@@ -140,3 +198,14 @@ class AppTheme {
 
 // Enum pour le statut des cultures
 enum CropStatus { healthy, warning, critical }
+
+class ThemeProvider extends ChangeNotifier {
+  bool _isDarkMode = false;
+  
+  bool get isDarkMode => _isDarkMode;
+  
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
+  }
+}

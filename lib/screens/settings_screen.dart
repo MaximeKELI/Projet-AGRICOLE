@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -22,21 +21,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _darkMode = prefs.getBool('darkMode') ?? false;
-      _notificationsEnabled = prefs.getBool('notifications') ?? true;
-      _selectedLanguage = prefs.getString('language') ?? 'Français';
-    });
+    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+    // Les paramètres seront gérés différemment
   }
 
-  Future<void> _saveSetting(String key, dynamic value) async {
-    final prefs = await SharedPreferences.getInstance();
-    if (value is bool) {
-      await prefs.setBool(key, value);
-    } else if (value is String) {
-      await prefs.setString(key, value);
-    }
+  Future<void> _saveSettings() async {
+    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+    // Les paramètres seront gérés différemment
   }
 
   @override
@@ -65,7 +56,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _darkMode,
                   onChanged: (value) {
                     setState(() => _darkMode = value);
-                    _saveSetting('darkMode', value);
                     // Implémenter le changement de thème ici
                   },
                 ),
@@ -84,7 +74,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (newValue) {
                       if (newValue != null) {
                         setState(() => _selectedLanguage = newValue);
-                        _saveSetting('language', newValue);
                       }
                     },
                   ),
@@ -102,7 +91,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _notificationsEnabled,
               onChanged: (value) {
                 setState(() => _notificationsEnabled = value);
-                _saveSetting('notifications', value);
               },
             ),
           ),
@@ -158,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     leading: Icon(Icons.login, color: Colors.green),
                     title: Text('Connexion',
-                        style: TextStyle(color: Colors.green)),
+                        style: TextStyle(color: Colors.white)),
                     onTap: () {
                       Navigator.pushNamed(context, '/login');
                     },

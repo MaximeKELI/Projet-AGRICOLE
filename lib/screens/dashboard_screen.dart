@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -104,17 +103,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadFromLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final List<String>? savedData = prefs.getStringList('dashboard_data');
-
-    if (savedData != null) {
-      setState(() {
-        data = savedData.map((item) {
-          final parts = item.split(':');
-          return DataPoint(parts[0], int.parse(parts[1]));
-        }).toList();
-      });
-    }
+    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+    // Les préférences seront gérées différemment
   }
 
   Future<void> _saveData() async {
@@ -131,11 +121,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         });
       }
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList(
-        'dashboard_data',
-        data.map((item) => '${item.month}:${item.value}').toList(),
-      );
+      // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+      // Les préférences seront gérées différemment
     } catch (e) {
       debugPrint("Error saving data: $e");
     }
@@ -273,6 +260,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SnackBar(content: Text('Erreur d\'import: $e')),
       );
     }
+  }
+
+  Future<void> _loadUserPreferences() async {
+    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+    // Les préférences seront gérées différemment
+  }
+
+  Future<void> _saveUserPreferences() async {
+    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
+    // Les préférences seront gérées différemment
   }
 
   Widget _buildChart() {

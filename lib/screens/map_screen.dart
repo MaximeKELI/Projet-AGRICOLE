@@ -182,7 +182,7 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Carte Agricole'),
+        title: const Text(''),
         backgroundColor: Colors.green,
         actions: [
           IconButton(
@@ -528,6 +528,29 @@ class _MapScreenState extends State<MapScreen> {
       return;
     }
 
+    // Calcul de la surface en hectares
+    double calculateArea(List<LatLng> points) {
+      if (points.length < 3) return 0.0;
+      
+      double area = 0.0;
+      final earthRadius = 6378137.0; // Rayon de la Terre en mètres
+      
+      for (int i = 0; i < points.length; i++) {
+        final j = (i + 1) % points.length;
+        final lat1 = points[i].latitude * math.pi / 180;
+        final lat2 = points[j].latitude * math.pi / 180;
+        final lon1 = points[i].longitude * math.pi / 180;
+        final lon2 = points[j].longitude * math.pi / 180;
+        
+        area += (lon2 - lon1) * (2 + math.sin(lat1) + math.sin(lat2));
+      }
+      
+      area = area * earthRadius * earthRadius / 2;
+      return area.abs() / 10000; // Conversion en hectares
+    }
+
+    final surface = calculateArea(_polygonPoints);
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -536,13 +559,49 @@ class _MapScreenState extends State<MapScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Coordonnées du polygone',
+              'Informations du polygone',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Surface: ${surface.toStringAsFixed(2)} hectares',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${(surface * 2.47105).toStringAsFixed(2)} acres',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Coordonnées des points',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView.builder(
                 itemCount: _polygonPoints.length,
@@ -550,7 +609,10 @@ class _MapScreenState extends State<MapScreen> {
                   final point = _polygonPoints[index];
                   return ListTile(
                     title: Text('Point ${index + 1}'),
-                    subtitle: Text('Latitude: ${point.latitude.toStringAsFixed(6)}\nLongitude: ${point.longitude.toStringAsFixed(6)}'),
+                    subtitle: Text(
+                      'Latitude: ${point.latitude.toStringAsFixed(6)}\n'
+                      'Longitude: ${point.longitude.toStringAsFixed(6)}',
+                    ),
                   );
                 },
               ),
@@ -675,10 +737,7 @@ class _MapScreenState extends State<MapScreen> {
     });
 
     try {
-      // Convertir les points du polygone en format WKT (Well-Known Text)
-      final wktPolygon = 'POLYGON((${_polygonPoints.map((p) => '${p.longitude} ${p.latitude}').join(', ')}, ${_polygonPoints.first.longitude} ${_polygonPoints.first.latitude}))';
-
-      // Construire la requête pour l'API Sentinel Hub
+      // Construire la requête pour l'API Sentinel Hub avec la couche NDVI
       final response = await http.post(
         Uri.parse('https://services.sentinel-hub.com/api/v1/process'),
         headers: {
@@ -741,7 +800,7 @@ class _MapScreenState extends State<MapScreen> {
         final imageBytes = response.bodyBytes;
         final base64Image = base64Encode(imageBytes);
 
-        // Analyser l'image pour calculer le NDVI moyen
+        // Analyser l'image NDVI pour obtenir la valeur moyenne
         final ndviValues = await _analyzeNDVIImage(base64Image);
         final averageNDVI = ndviValues.reduce((a, b) => a + b) / ndviValues.length;
 
@@ -765,10 +824,26 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<List<double>> _analyzeNDVIImage(String base64Image) async {
-    // Cette fonction analyse l'image NDVI pour extraire les valeurs
-    // Dans un cas réel, vous devriez utiliser une bibliothèque d'analyse d'image
-    // Pour cet exemple, nous allons simuler des valeurs NDVI
-    return List.generate(100, (index) => (math.Random().nextDouble() * 2) - 1);
+    try {
+      // Convertir l'image base64 en bytes
+      final imageBytes = base64Decode(base64Image);
+      
+      // Analyser les pixels de l'image pour extraire les valeurs NDVI
+      // Les valeurs NDVI sont normalisées entre -1 et 1
+      final pixels = imageBytes.length ~/ 4; // 4 bytes par pixel (RGBA)
+      final ndviValues = <double>[];
+      
+      for (var i = 0; i < pixels; i++) {
+        // Extraire la valeur NDVI du pixel (stockée dans le canal rouge)
+        final ndviValue = imageBytes[i * 4] / 255.0 * 2 - 1;
+        ndviValues.add(ndviValue);
+      }
+      
+      return ndviValues;
+    } catch (e) {
+      print('Erreur lors de l\'analyse de l\'image NDVI: $e');
+      return [0.0];
+    }
   }
 
   void _showNDVIDialog(BuildContext context) {

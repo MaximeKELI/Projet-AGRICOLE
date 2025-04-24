@@ -319,7 +319,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                           onPressed: () => _submitForm(context),
                           child: Text(
                             _isLogin ? 'SE CONNECTER' : "S'INSCRIRE",
-                            style: TextStyle(fontSize: 18),
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
 
