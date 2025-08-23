@@ -113,7 +113,7 @@ dependency_overrides:
   unicode: ^1.1.8
   vm_service: ^15.0.0
 
-# ⚡ Ajoute ceci à la fin (PAS dans dependency_overrides)
+
 flutter_launcher_icons:
   android: true
   ios: true
