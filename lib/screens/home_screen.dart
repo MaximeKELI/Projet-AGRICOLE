@@ -288,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           SizedBox(height: 12),
           Text(
-            'INNOV GIS',
+            'Agrigeo',
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,

@@ -60,7 +60,7 @@ class AboutUsScreen extends StatelessWidget {
                   _buildSection(
                     'Contact',
                     Icons.contact_mail,
-                    'Email: contact@innov-gis.com\nTéléphone: +225 XX XX XX XX\nAdresse: Abidjan, Côte d\'Ivoire',
+                    'Email: presidentnetero01@gmailcom\nTéléphone: +228 98 60 00 18\nAdresse: Lome, TOGO',
                   ),
                 ],
               ),

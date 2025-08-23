@@ -46,17 +46,6 @@ class UserModel extends ChangeNotifier {
       // Simulation de chargement
       await Future.delayed(Duration(milliseconds: 500));
 
-      // Pour tests, vous pouvez décommenter cette partie :
-      /* 
-      _name = "Test User";
-      _email = "test@example.com";
-      _phone = "0123456789";
-      _role = "farmer";
-      _token = "simulated_token";
-      _farmName = "Ma Ferme Test";
-      _location = "Paris";
-      */
-
       notifyListeners();
     } catch (e) {
       print("Erreur de chargement: $e");

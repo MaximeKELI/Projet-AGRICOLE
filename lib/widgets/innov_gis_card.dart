@@ -11,7 +11,7 @@ class InnovGisCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'À propos de INNOV GIS',
+              'À propos de Agrigeo',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -26,9 +26,9 @@ class InnovGisCard extends StatelessWidget {
             SizedBox(height: 15),
             Divider(),
             SizedBox(height: 10),
-            _buildInfoRow(Icons.email, 'innovgis025@gmail.com'),
-            _buildInfoRow(Icons.phone, '(+225) 056434333'),
-            _buildInfoRow(Icons.web, 'www.innovgis.org'),
+            _buildInfoRow(Icons.email, 'presidentnetero01@gmail.com'),
+            _buildInfoRow(Icons.phone, '(+228) 98600018'),
+            _buildInfoRow(Icons.web, 'www.Agrigeo.org'),
           ],
         ),
       ),

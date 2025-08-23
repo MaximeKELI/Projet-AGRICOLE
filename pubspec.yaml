@@ -18,7 +18,6 @@ dependencies:
   cloud_firestore: ^5.6.5
   firebase_storage: ^12.4.4
 
-
   # 🗺️ Cartographie
   google_maps_flutter: ^2.6.0
   geolocator: ^13.0.3
@@ -31,7 +30,7 @@ dependencies:
   image_picker: ^1.0.4
   image: ^4.5.4
   file_picker: ^10.0.0
-  csv: ^6.0.0  # Mise à jour majeure recommandée
+  csv: ^6.0.0
   flutter_svg: ^2.0.7
 
   # 🤖 IA
@@ -45,8 +44,8 @@ dependencies:
   lottie: ^3.0.0
   rive: ^0.13.20
   animated_text_kit: ^4.2.2
-  google_fonts: ^6.2.1  # Mise à jour majeure
-  carousel_slider: ^5.0.0  # Mise à jour majeure
+  google_fonts: ^6.2.1
+  carousel_slider: ^5.0.0
   percent_indicator: ^4.2.2
 
   # 📡 Communication
@@ -72,7 +71,6 @@ dependencies:
   hive_flutter: ^1.1.0
   pdf: ^3.10.0
   printing: ^5.9.1
-  
   path_provider: ^2.1.1
 
   # 🤖 Google Generative AI
@@ -80,12 +78,11 @@ dependencies:
 
   # 🌐 WebView
   webview_flutter: ^4.0.0
-
-  # 🌐 WebView Android
   webview_flutter_android: ^3.0.0
-
-  # 🌐 WebView WKWebview
   webview_flutter_wkwebview: ^3.0.0
+
+  # 🚀 Icônes personnalisées
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -97,15 +94,14 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-
     - lib/assets/images/fao_logo.png
     - lib/assets/images/ci_logo.png
     - lib/assets/images/afd_logo.png
     - lib/assets/images/cnra_logo.png
     - lib/assets/animations/ai_analysis.json
-    - 'lib/assets/images/farm_bg.jpg'
-    - 'lib/assets/images/Registerimg.png'
-    - 'lib/assets/images/rgstimg.png'
+    - lib/assets/images/farm_bg.jpg
+    - lib/assets/images/Registerimg.png
+    - lib/assets/images/rgstimg.png
     - lib/assets/images/logo.png
 
 dependency_overrides:
@@ -116,3 +112,9 @@ dependency_overrides:
   material_color_utilities: ^0.12.0
   unicode: ^1.1.8
   vm_service: ^15.0.0
+
+# ⚡ Ajoute ceci à la fin (PAS dans dependency_overrides)
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "lib/assets/images/logo.png"

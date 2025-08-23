@@ -18,13 +18,13 @@ class AboutUsScreen extends StatelessWidget {
                 child: Image.asset('lib/assets/images/logo.jpeg', height: 100),
               ),
             ),
-            
+
             Padding(
               padding: EdgeInsets.all(20),
               child: Column(
                 children: [
                   Text(
-                    'Bienvenue chez INNOV GIS',
+                    'Bienvenue chez Agrigeo',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -32,11 +32,11 @@ class AboutUsScreen extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 20),
-                  
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green[800],
-                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                     ),
                     child: Text('Accéder à l\'application'),
                     onPressed: () {
