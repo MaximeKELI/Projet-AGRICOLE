@@ -87,6 +87,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  sqflite: ^2.2.5+1 
   flutter_lints: any
   mockito: ^5.4.4
   build_runner: ^2.4.8

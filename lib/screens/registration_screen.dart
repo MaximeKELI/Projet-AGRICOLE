@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'home_screen.dart';
+import 'database_helper.dart';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 class RegistrationScreen extends StatefulWidget {
   @override
@@ -111,11 +114,44 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     });
   }
 
-  void _submitForm() {
+  void _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
       setState(() {
         _errorMessage = null;
       });
+
+      if (_isRegisterMode) {
+        final existingUser =
+            await DatabaseHelper().getUserByEmail(_emailController.text);
+        if (existingUser != null) {
+          setState(() {
+            _errorMessage = "Cet email est déjà utilisé.";
+          });
+          return;
+        }
+
+        final hashedPassword =
+            sha256.convert(utf8.encode(_passwordController.text)).toString();
+
+        await DatabaseHelper().insertUser({
+          'fullName': _fullNameController.text,
+          'email': _emailController.text,
+          'password': hashedPassword,
+        });
+      } else {
+        final user =
+            await DatabaseHelper().getUserByEmail(_emailController.text);
+        if (user == null ||
+            user['password'] !=
+                sha256
+                    .convert(utf8.encode(_passwordController.text))
+                    .toString()) {
+          setState(() {
+            _errorMessage = "Email ou mot de passe incorrect.";
+          });
+          return;
+        }
+      }
 
       Navigator.pushReplacement(
         context,
