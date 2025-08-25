@@ -26,7 +26,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     super.initState();
     _model = GenerativeModel(
       model: 'gemini-1.5-pro',
-      apiKey: 'AIzaSyARGvtS9V-730kplWB1Q1wfXDrzcnGwv7w', // Remplacez par votre clé API Gemini
+      apiKey: 'AIzaSyCjK_T6XRM4Uuz3_Q3X8H_A6FmOoCen-BI',
     );
     _chat = _model.startChat();
     _getCurrentLocation();
@@ -139,8 +139,9 @@ Répondez de manière directe et pratique, sans introduction ni conclusion.
       final response = await _chat.sendMessage(
         Content.text(text),
       );
-      
-      final responseText = response.text ?? 'Désolé, je n\'ai pas pu générer de réponse.';
+
+      final responseText =
+          response.text ?? 'Désolé, je n\'ai pas pu générer de réponse.';
       _addMessage(responseText, false);
     } catch (e) {
       _addMessage('Erreur lors de la communication avec l\'IA: $e', false);
