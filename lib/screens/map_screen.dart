@@ -52,7 +52,7 @@ class _MapScreenState extends State<MapScreen> {
   Future<void> _getAccessToken() async {
     const maxRetries = 3;
     int retryCount = 0;
-    
+
     while (retryCount < maxRetries) {
       try {
         setState(() {
@@ -60,14 +60,16 @@ class _MapScreenState extends State<MapScreen> {
           _errorMessage = null;
         });
 
-        print('Tentative de connexion à Sentinel Hub (${retryCount + 1}/$maxRetries)...');
+        print(
+            'Tentative de connexion à Sentinel Hub (${retryCount + 1}/$maxRetries)...');
         print('Client ID: $_clientId');
         print('Client Secret: $_clientSecret');
 
         // Vérifier la connectivité
         try {
-          final result = await InternetAddress.lookup('services.sentinel-hub.com')
-              .timeout(const Duration(seconds: 5));
+          final result =
+              await InternetAddress.lookup('services.sentinel-hub.com')
+                  .timeout(const Duration(seconds: 5));
           if (result.isEmpty || result[0].rawAddress.isEmpty) {
             throw Exception('Pas de connexion internet');
           }
@@ -109,7 +111,7 @@ class _MapScreenState extends State<MapScreen> {
           if (response.statusCode == 200 || response.statusCode == 201) {
             final data = json.decode(response.body);
             final accessToken = data['access_token'] as String?;
-            
+
             if (accessToken != null && accessToken.isNotEmpty) {
               print('Token d\'accès obtenu avec succès');
               setState(() {
@@ -123,7 +125,8 @@ class _MapScreenState extends State<MapScreen> {
             }
           } else {
             final errorData = json.decode(response.body);
-            throw Exception('Erreur ${response.statusCode}: ${errorData['error'] ?? 'Erreur inconnue'}');
+            throw Exception(
+                'Erreur ${response.statusCode}: ${errorData['error'] ?? 'Erreur inconnue'}');
           }
         } finally {
           client.close();
@@ -131,16 +134,17 @@ class _MapScreenState extends State<MapScreen> {
       } catch (e) {
         print('Erreur détaillée lors de l\'authentification: $e');
         print('Stack trace: ${StackTrace.current}');
-        
+
         if (retryCount < maxRetries - 1) {
           retryCount++;
           print('Nouvelle tentative dans 2 secondes...');
           await Future.delayed(const Duration(seconds: 2));
           continue;
         }
-        
+
         setState(() {
-          _errorMessage = 'Erreur de connexion après $maxRetries tentatives: $e';
+          _errorMessage =
+              'Erreur de connexion après $maxRetries tentatives: $e';
           _isLoading = false;
           _isInitialized = false;
         });
@@ -168,7 +172,8 @@ class _MapScreenState extends State<MapScreen> {
         body: WebViewWidget(
           controller: WebViewController()
             ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..loadRequest(Uri.parse('https://apps.sentinel-hub.com/eo-browser/'))
+            ..loadRequest(
+                Uri.parse('https://apps.sentinel-hub.com/eo-browser/'))
             ..setNavigationDelegate(
               NavigationDelegate(
                 onPageFinished: (String url) {
@@ -211,7 +216,7 @@ class _MapScreenState extends State<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              center: const LatLng(7.5399, -5.5471), // Centre sur la Côte d'Ivoire
+              center: const LatLng(8.6195, 0.8248), // Centre Togo
               zoom: 8.0,
               maxZoom: 18.0,
               minZoom: 3.0,
@@ -228,7 +233,7 @@ class _MapScreenState extends State<MapScreen> {
               // Couche de base OpenStreetMap
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.app',
+                userAgentPackageName: 'vms.maxime.app',
                 backgroundColor: Colors.white,
                 maxZoom: 18,
                 minZoom: 3,
@@ -236,12 +241,13 @@ class _MapScreenState extends State<MapScreen> {
               // Couche Sentinel Hub
               if (_isInitialized && _accessToken != null)
                 TileLayer(
-                  urlTemplate: 'https://services.sentinel-hub.com/ogc/wms/{instanceId}?'
+                  urlTemplate:
+                      'https://services.sentinel-hub.com/ogc/wms/{instanceId}?'
                       'REQUEST=GetMap'
                       '&SERVICE=WMS'
                       '&VERSION=1.3.0'
                       '&LAYERS={layer}'
-                      '&WIDTH=512'  // Augmentation de la résolution
+                      '&WIDTH=512' // Augmentation de la résolution
                       '&HEIGHT=512' // Augmentation de la résolution
                       '&CRS=EPSG:3857'
                       '&BBOX={bbox}'
@@ -250,8 +256,8 @@ class _MapScreenState extends State<MapScreen> {
                       '&TRANSPARENT=true'
                       '&access_token={accessToken}'
                       '&SHOWLOGO=false'
-                      '&MAXCC=10'   // Réduction de la couverture nuageuse maximale
-                      '&PREVIEW=1'  // Meilleure qualité
+                      '&MAXCC=10' // Réduction de la couverture nuageuse maximale
+                      '&PREVIEW=1' // Meilleure qualité
                       '&UPDATED_FROM=2023-01-01T00:00:00Z'
                       '&UPDATED_TO=2023-12-31T23:59:59Z',
                   additionalOptions: {
@@ -275,7 +281,8 @@ class _MapScreenState extends State<MapScreen> {
                       FloatingActionButton(
                         heroTag: 'zoom_in',
                         onPressed: () {
-                          _mapController.move(_mapController.center, _mapController.zoom + 1);
+                          _mapController.move(
+                              _mapController.center, _mapController.zoom + 1);
                         },
                         child: const Icon(Icons.add),
                       ),
@@ -283,7 +290,8 @@ class _MapScreenState extends State<MapScreen> {
                       FloatingActionButton(
                         heroTag: 'zoom_out',
                         onPressed: () {
-                          _mapController.move(_mapController.center, _mapController.zoom - 1);
+                          _mapController.move(
+                              _mapController.center, _mapController.zoom - 1);
                         },
                         child: const Icon(Icons.remove),
                       ),
@@ -403,7 +411,9 @@ class _MapScreenState extends State<MapScreen> {
                       _fetchWeatherData(_polygonPoints.first);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Veuillez d\'abord dessiner un polygone')),
+                        const SnackBar(
+                            content:
+                                Text('Veuillez d\'abord dessiner un polygone')),
                       );
                     }
                   },
@@ -417,7 +427,9 @@ class _MapScreenState extends State<MapScreen> {
                       _calculateNDVI();
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Veuillez d\'abord dessiner un polygone')),
+                        const SnackBar(
+                            content:
+                                Text('Veuillez d\'abord dessiner un polygone')),
                       );
                     }
                   },
@@ -474,16 +486,17 @@ class _MapScreenState extends State<MapScreen> {
                     _isLoading = true;
                   });
                   Navigator.pop(context);
-                  
+
                   // Rafraîchir le token si nécessaire
                   try {
                     await _getAccessToken();
                   } catch (e) {
                     print('Erreur lors du rafraîchissement du token: $e');
                   }
-                  
+
                   // Forcer le rafraîchissement de la carte
-                  _mapController.move(_mapController.center, _mapController.zoom);
+                  _mapController.move(
+                      _mapController.center, _mapController.zoom);
                   setState(() {
                     _isLoading = false;
                   });
@@ -531,20 +544,20 @@ class _MapScreenState extends State<MapScreen> {
     // Calcul de la surface en hectares
     double calculateArea(List<LatLng> points) {
       if (points.length < 3) return 0.0;
-      
+
       double area = 0.0;
       final earthRadius = 6378137.0; // Rayon de la Terre en mètres
-      
+
       for (int i = 0; i < points.length; i++) {
         final j = (i + 1) % points.length;
         final lat1 = points[i].latitude * math.pi / 180;
         final lat2 = points[j].latitude * math.pi / 180;
         final lon1 = points[i].longitude * math.pi / 180;
         final lon2 = points[j].longitude * math.pi / 180;
-        
+
         area += (lon2 - lon1) * (2 + math.sin(lat1) + math.sin(lat2));
       }
-      
+
       area = area * earthRadius * earthRadius / 2;
       return area.abs() / 10000; // Conversion en hectares
     }
@@ -757,26 +770,28 @@ class _MapScreenState extends State<MapScreen> {
                 'crs': 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
               }
             },
-            'data': [{
-              'type': 'sentinel-2-l2a',
-              'dataFilter': {
-                'timeRange': {
-                  'from': '2023-01-01T00:00:00Z',
-                  'to': '2023-12-31T23:59:59Z'
-                },
-                'maxCloudCoverage': 10
+            'data': [
+              {
+                'type': 'sentinel-2-l2a',
+                'dataFilter': {
+                  'timeRange': {
+                    'from': '2023-01-01T00:00:00Z',
+                    'to': '2023-12-31T23:59:59Z'
+                  },
+                  'maxCloudCoverage': 10
+                }
               }
-            }]
+            ]
           },
           'output': {
             'width': 512,
             'height': 512,
-            'responses': [{
-              'identifier': 'default',
-              'format': {
-                'type': 'image/png'
+            'responses': [
+              {
+                'identifier': 'default',
+                'format': {'type': 'image/png'}
               }
-            }]
+            ]
           },
           'evalscript': '''
             //VERSION=3
@@ -802,7 +817,8 @@ class _MapScreenState extends State<MapScreen> {
 
         // Analyser l'image NDVI pour obtenir la valeur moyenne
         final ndviValues = await _analyzeNDVIImage(base64Image);
-        final averageNDVI = ndviValues.reduce((a, b) => a + b) / ndviValues.length;
+        final averageNDVI =
+            ndviValues.reduce((a, b) => a + b) / ndviValues.length;
 
         setState(() {
           _averageNDVI = averageNDVI;
@@ -811,7 +827,8 @@ class _MapScreenState extends State<MapScreen> {
 
         _showNDVIDialog(context);
       } else {
-        throw Exception('Erreur lors du calcul du NDVI: ${response.statusCode}');
+        throw Exception(
+            'Erreur lors du calcul du NDVI: ${response.statusCode}');
       }
     } catch (e) {
       setState(() {
@@ -827,18 +844,18 @@ class _MapScreenState extends State<MapScreen> {
     try {
       // Convertir l'image base64 en bytes
       final imageBytes = base64Decode(base64Image);
-      
+
       // Analyser les pixels de l'image pour extraire les valeurs NDVI
       // Les valeurs NDVI sont normalisées entre -1 et 1
       final pixels = imageBytes.length ~/ 4; // 4 bytes par pixel (RGBA)
       final ndviValues = <double>[];
-      
+
       for (var i = 0; i < pixels; i++) {
         // Extraire la valeur NDVI du pixel (stockée dans le canal rouge)
         final ndviValue = imageBytes[i * 4] / 255.0 * 2 - 1;
         ndviValues.add(ndviValue);
       }
-      
+
       return ndviValues;
     } catch (e) {
       print('Erreur lors de l\'analyse de l\'image NDVI: $e');
@@ -851,7 +868,7 @@ class _MapScreenState extends State<MapScreen> {
 
     String ndviStatus;
     Color statusColor;
-    
+
     if (_averageNDVI! > 0.6) {
       ndviStatus = 'Végétation très dense et saine';
       statusColor = Colors.green;
@@ -927,28 +944,29 @@ class SentinelTileProvider extends TileProvider {
     final accessToken = additionalOptions['accessToken'] as String;
 
     final bbox = _getBoundingBox(coords, options.tileSize.toInt());
-    
+
     // Construire l'URL avec les paramètres corrects
-    final url = Uri.parse('https://services.sentinel-hub.com/ogc/wms/$instanceId')
-        .replace(queryParameters: {
-          'REQUEST': 'GetMap',
-          'SERVICE': 'WMS',
-          'VERSION': '1.3.0',
-          'LAYERS': layer,
-          'WIDTH': '256',
-          'HEIGHT': '256',
-          'CRS': 'EPSG:3857',
-          'BBOX': bbox,
-          'TIME': '2023-01-01/2023-12-31',
-          'FORMAT': 'image/png',
-          'TRANSPARENT': 'true',
-          'access_token': accessToken,
-          'SHOWLOGO': 'false',
-          'MAXCC': '20',
-          'PREVIEW': '2',
-          'UPDATED_FROM': '2023-01-01T00:00:00Z',
-          'UPDATED_TO': '2023-12-31T23:59:59Z'
-        }).toString();
+    final url =
+        Uri.parse('https://services.sentinel-hub.com/ogc/wms/$instanceId')
+            .replace(queryParameters: {
+      'REQUEST': 'GetMap',
+      'SERVICE': 'WMS',
+      'VERSION': '1.3.0',
+      'LAYERS': layer,
+      'WIDTH': '256',
+      'HEIGHT': '256',
+      'CRS': 'EPSG:3857',
+      'BBOX': bbox,
+      'TIME': '2023-01-01/2023-12-31',
+      'FORMAT': 'image/png',
+      'TRANSPARENT': 'true',
+      'access_token': accessToken,
+      'SHOWLOGO': 'false',
+      'MAXCC': '20',
+      'PREVIEW': '2',
+      'UPDATED_FROM': '2023-01-01T00:00:00Z',
+      'UPDATED_TO': '2023-12-31T23:59:59Z'
+    }).toString();
 
     print('URL de la tuile: $url');
     print('Couche sélectionnée: $layer');
@@ -966,12 +984,14 @@ class SentinelTileProvider extends TileProvider {
         ImageStreamListener(
           (ImageInfo info, bool _) {
             print('Image chargée avec succès pour la couche $layer');
-            print('Dimensions de l\'image: ${info.image.width}x${info.image.height}');
+            print(
+                'Dimensions de l\'image: ${info.image.width}x${info.image.height}');
           },
           onError: (dynamic error, StackTrace? stackTrace) {
             print('Erreur lors du chargement de l\'image: $error');
             print('Stack trace: $stackTrace');
-            if (error.toString().contains('401') || error.toString().contains('403')) {
+            if (error.toString().contains('401') ||
+                error.toString().contains('403')) {
               print('Erreur d\'autorisation - Token peut-être expiré');
             }
           },
@@ -987,8 +1007,9 @@ class SentinelTileProvider extends TileProvider {
     final left = (x / n) * 360 - 180;
     final top = math.atan(math.exp(math.pi * (1 - 2 * y / n))) * 180 / math.pi;
     final right = ((x + 1) / n) * 360 - 180;
-    final bottom = math.atan(math.exp(math.pi * (1 - 2 * (y + 1) / n))) * 180 / math.pi;
+    final bottom =
+        math.atan(math.exp(math.pi * (1 - 2 * (y + 1) / n))) * 180 / math.pi;
 
     return '$left,$bottom,$right,$top';
   }
-} 
+}
