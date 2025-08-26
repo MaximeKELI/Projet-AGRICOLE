@@ -1,5 +1,4 @@
 import 'firebase_options.dart';
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_agrigeo/utils/theme.dart';
@@ -9,11 +8,12 @@ import 'package:app_agrigeo/screens/user_model.dart';
 import 'package:app_agrigeo/screens/map_screen.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:app_agrigeo/screens/home_screen.dart';
+import 'package:app_agrigeo/screens/db_universal.dart';
 import 'package:app_agrigeo/screens/splash_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
-import 'package:app_agrigeo/screens/database_helper.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,28 +21,30 @@ void main() async {
   await Hive.initFlutter();
   await Hive.openBox('session');
 
-  // Setup SQLite FFI on desktop platforms
-  if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+  // Setup SQLite FFI on desktop (non-web)
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
+      defaultTargetPlatform == TargetPlatform.windows ||
+      defaultTargetPlatform == TargetPlatform.macOS)) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
 
-  // Ensure SQLite database and tables are created on startup
+  // Ensure DB exists and print diagnostics
   try {
     final dbh = DatabaseHelper();
-    await dbh.database;
+    await dbh.ensureInitialized();
     final path = await dbh.getDatabasePath();
     final info = await dbh.getUsersTableInfo();
     final count = await dbh.getUserCount();
-    print('SQLite path: ' + path);
-    print('users schema: ' + info.toString());
-    print('users count: ' + count.toString());
+    print('SQLite path: $path');
+    print('users schema: $info');
+    print('users count: $count');
   } catch (e) {
-    print('DB init error: ' + e.toString());
+    print('DB init error: $e');
   }
 
   try {
-    if (!Platform.isLinux) {
+    if (!kIsWeb) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );

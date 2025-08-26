@@ -14,6 +14,10 @@ class DatabaseHelper {
     return _database!;
   }
 
+  Future<void> ensureInitialized() async {
+    await database;
+  }
+
   Future<Database> _initDB() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'users.db');
