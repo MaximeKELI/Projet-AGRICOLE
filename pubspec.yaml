@@ -56,6 +56,10 @@ dependencies:
 
   # 🧠 State & Storage
   provider: ^6.1.4
+  sqflite: ^2.2.5+1
+  sqflite_common_ffi: ^2.3.3
+  path: ^1.9.0
+  crypto: ^3.0.6
 
   # 🔔 Notifications
   flutter_local_notifications: ^19.0.0
@@ -87,7 +91,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  sqflite: ^2.2.5+1 
   flutter_lints: any
   mockito: ^5.4.4
   build_runner: ^2.4.8

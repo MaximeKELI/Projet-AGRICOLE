@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:flutter/material.dart';
-import 'home_screen.dart';
-import 'database_helper.dart';
 import 'dart:convert';
+import 'database_helper.dart';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class RegistrationScreen extends StatefulWidget {
   @override
@@ -11,7 +11,7 @@ class RegistrationScreen extends StatefulWidget {
 }
 
 class _RegistrationScreenState extends State<RegistrationScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
@@ -21,6 +21,8 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isRegisterMode = false;
+  bool _rememberMe = true;
+  bool _isSubmitting = false;
   String? _errorMessage;
 
   late AnimationController _titleAnimationController;
@@ -38,24 +40,20 @@ class _RegistrationScreenState extends State<RegistrationScreen>
   @override
   void initState() {
     super.initState();
-
     _titleAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 1000),
     );
-
     _formAnimationController = AnimationController(
       vsync: this,
       duration: Duration(milliseconds: 800),
     );
-
     _titleOpacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _titleAnimationController,
         curve: Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-
     _titleSlideAnimation = Tween<Offset>(
       begin: Offset(0.0, -0.5),
       end: Offset.zero,
@@ -65,14 +63,12 @@ class _RegistrationScreenState extends State<RegistrationScreen>
         curve: Interval(0.3, 1.0, curve: Curves.easeOut),
       ),
     );
-
     _formFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _formAnimationController,
         curve: Interval(0.0, 0.5, curve: Curves.easeIn),
       ),
     );
-
     _formSlideAnimation = Tween<Offset>(
       begin: Offset(0.0, 0.3),
       end: Offset.zero,
@@ -82,10 +78,17 @@ class _RegistrationScreenState extends State<RegistrationScreen>
         curve: Interval(0.2, 1.0, curve: Curves.easeOut),
       ),
     );
-
     _startTypingAnimation();
     _titleAnimationController.forward();
     _formAnimationController.forward();
+  }
+
+  Future<void> _saveSession() async {
+    if (!_rememberMe) return;
+    final box = Hive.box('session');
+    await box.put('email', _emailController.text);
+    await box.put('fullName', _fullNameController.text);
+    await box.put('isLoggedIn', true);
   }
 
   void _startTypingAnimation() {
@@ -114,49 +117,64 @@ class _RegistrationScreenState extends State<RegistrationScreen>
     });
   }
 
+  void _setSubmitting(bool value) {
+    if (mounted) {
+      setState(() => _isSubmitting = value);
+    }
+  }
+
   void _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
+      _setSubmitting(true);
       setState(() {
         _errorMessage = null;
       });
 
-      if (_isRegisterMode) {
-        final existingUser =
-            await DatabaseHelper().getUserByEmail(_emailController.text);
-        if (existingUser != null) {
-          setState(() {
-            _errorMessage = "Cet email est déjà utilisé.";
+      try {
+        if (_isRegisterMode) {
+          final existingUser =
+              await DatabaseHelper().getUserByEmail(_emailController.text);
+          if (existingUser != null) {
+            setState(() {
+              _errorMessage = "Cet email est déjà utilisé.";
+            });
+            return;
+          }
+
+          final hashedPassword =
+              sha256.convert(utf8.encode(_passwordController.text)).toString();
+
+          await DatabaseHelper().insertUser({
+            'fullName': _fullNameController.text,
+            'email': _emailController.text,
+            'password': hashedPassword,
           });
-          return;
+        } else {
+          final user =
+              await DatabaseHelper().getUserByEmail(_emailController.text);
+          if (user == null ||
+              user['password'] !=
+                  sha256
+                      .convert(utf8.encode(_passwordController.text))
+                      .toString()) {
+            setState(() {
+              _errorMessage = "Email ou mot de passe incorrect.";
+            });
+            return;
+          }
+          _fullNameController.text = user['fullName'] ?? '';
         }
 
-        final hashedPassword =
-            sha256.convert(utf8.encode(_passwordController.text)).toString();
-
-        await DatabaseHelper().insertUser({
-          'fullName': _fullNameController.text,
-          'email': _emailController.text,
-          'password': hashedPassword,
+        await _saveSession();
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/main');
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'Erreur: $e';
         });
-      } else {
-        final user =
-            await DatabaseHelper().getUserByEmail(_emailController.text);
-        if (user == null ||
-            user['password'] !=
-                sha256
-                    .convert(utf8.encode(_passwordController.text))
-                    .toString()) {
-          setState(() {
-            _errorMessage = "Email ou mot de passe incorrect.";
-          });
-          return;
-        }
+      } finally {
+        _setSubmitting(false);
       }
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
     } else {
       setState(() {
         _errorMessage = "Veuillez corriger les erreurs.";
@@ -375,6 +393,16 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       ),
                     ),
                   ),
+                SizedBox(height: 12),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _rememberMe,
+                      onChanged: (v) => setState(() => _rememberMe = v ?? true),
+                    ),
+                    const Text('Rester connecté')
+                  ],
+                ),
                 SizedBox(height: 20),
                 if (_errorMessage != null)
                   Container(
@@ -389,16 +417,55 @@ class _RegistrationScreenState extends State<RegistrationScreen>
                       textAlign: TextAlign.center,
                     ),
                   ),
-                ElevatedButton(
-                  onPressed: _submitForm,
-                  child: Text(_isRegisterMode ? "S'inscrire" : "Se connecter"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green[800],
-                    padding: EdgeInsets.symmetric(vertical: 14),
-                    textStyle: TextStyle(fontSize: 18),
-                  ),
-                ),
+                SizedBox(height: 80),
               ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _isSubmitting ? null : _submitForm,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green[800],
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: AnimatedSwitcher(
+                duration: Duration(milliseconds: 200),
+                child: _isSubmitting
+                    ? SizedBox(
+                        key: ValueKey('loading'),
+                        height: 22,
+                        width: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Row(
+                        key: ValueKey('label'),
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _isRegisterMode ? Icons.person_add : Icons.login,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            _isRegisterMode ? "S'inscrire" : "Se connecter",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
+                          ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),

@@ -1,5 +1,5 @@
-import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -20,8 +20,20 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
+        await db.execute('''
+          CREATE TABLE users(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fullName TEXT,
+            email TEXT UNIQUE,
+            password TEXT
+          )
+        ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Recreate schema as requested
+        await db.execute('DROP TABLE IF EXISTS users');
         await db.execute('''
           CREATE TABLE users(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,5 +58,35 @@ class DatabaseHelper {
         await db.query('users', where: 'email = ?', whereArgs: [email]);
     if (result.isNotEmpty) return result.first;
     return null;
+  }
+
+  // Helpers for diagnostics
+  Future<String> getDatabasePath() async {
+    final dbPath = await getDatabasesPath();
+    return join(dbPath, 'users.db');
+  }
+
+  Future<List<Map<String, dynamic>>> getUsersTableInfo() async {
+    final db = await database;
+    return await db.rawQuery('PRAGMA table_info(users)');
+  }
+
+  Future<int> getUserCount() async {
+    final db = await database;
+    final res = await db.rawQuery('SELECT COUNT(*) as count FROM users');
+    return (res.first['count'] as int?) ?? 0;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final db = await database;
+    return await db.query('users', limit: 10);
+  }
+
+  Future<void> resetDatabase() async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, 'users.db');
+    await deleteDatabase(path);
+    _database = null;
+    await database;
   }
 }

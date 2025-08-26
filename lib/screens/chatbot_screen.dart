@@ -25,7 +25,7 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void initState() {
     super.initState();
     _model = GenerativeModel(
-      model: 'gemini-1.5-pro',
+      model: 'gemini-1.5-flash',
       apiKey: 'AIzaSyCjK_T6XRM4Uuz3_Q3X8H_A6FmOoCen-BI',
     );
     _chat = _model.startChat();

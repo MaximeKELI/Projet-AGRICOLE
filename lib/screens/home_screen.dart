@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
-import 'package:app_agrigeo/screens/dashboard_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:app_agrigeo/screens/chatbot_screen.dart';
-import 'package:app_agrigeo/screens/community_screen.dart';
-import 'package:app_agrigeo/screens/ai_analysis_screen.dart';
-import 'package:app_agrigeo/screens/irrigation_screen.dart';
+import 'package:app_agrigeo/screens/weather_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
-import 'package:app_agrigeo/screens/weather_screen.dart';
+import 'package:app_agrigeo/screens/dashboard_screen.dart';
+import 'package:app_agrigeo/screens/community_screen.dart';
+import 'package:app_agrigeo/screens/irrigation_screen.dart';
+import 'package:app_agrigeo/screens/ai_analysis_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -38,6 +39,8 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _sunController;
   late Animation<double> _sunAnimation;
 
+  String _greetingName = '';
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +48,18 @@ class _HomeScreenState extends State<HomeScreen>
 
     _initScreens();
     _setupAnimations();
+    _loadGreeting();
+  }
+
+  Future<void> _loadGreeting() async {
+    final box = Hive.box('session');
+    final name = (box.get('fullName') as String?)?.trim();
+    final email = (box.get('email') as String?)?.trim();
+    setState(() {
+      _greetingName = (name != null && name.isNotEmpty)
+          ? name
+          : (email ?? 'Utilisateur');
+    });
   }
 
   void _initScreens() {
@@ -112,6 +127,16 @@ class _HomeScreenState extends State<HomeScreen>
           if (isLoggedIn) _buildUserAvatar(user),
           ..._buildAppBarActions(),
         ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(24),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              'Bienvenue, ' + _greetingName,
+              style: const TextStyle(color: Colors.white70, fontSize: 14),
+            ),
+          ),
+        ),
       ),
       body: Stack(
         children: [

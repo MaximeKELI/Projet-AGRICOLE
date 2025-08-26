@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -38,8 +39,13 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Timer(const Duration(seconds: 3), () {
-      if (mounted) {
+    Timer(const Duration(seconds: 3), () async {
+      if (!mounted) return;
+      final box = Hive.box('session');
+      final logged = box.get('isLoggedIn', defaultValue: false) as bool;
+      if (logged) {
+        Navigator.pushReplacementNamed(context, '/main');
+      } else {
         Navigator.pushReplacementNamed(context, '/register');
       }
     });
