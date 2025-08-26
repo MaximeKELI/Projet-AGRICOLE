@@ -42,7 +42,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_animate: ^4.1.1+1
   lottie: ^3.0.0
-  rive: ^0.13.20
   animated_text_kit: ^4.2.2
   google_fonts: ^6.2.1
   carousel_slider: ^5.0.0
