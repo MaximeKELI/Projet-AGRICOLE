@@ -34,9 +34,9 @@ class _MapScreenState extends State<MapScreen> {
   late WebViewController _webViewController;
 
   // Credentials Sentinel Hub
-  final String _clientId = '177c8a67-3479-4bb7-aca2-60828ab3d919';
-  final String _clientSecret = 'CGx9UfyFVYgrhhU8IMln4gXl0J90cZYl';
-  final String _instanceId = '54d467e9-31a6-400d-9631-50da0f891982';
+  final String _clientId = 'ddfc8b23-3220-4e4a-86fa-ea6f2a2587ec';
+  final String _clientSecret = '1D63gwT8YIVTZoc4V7QHtkryWm2BtItk';
+  final String _instanceId = 'd688eebb-fbc6-4731-86a7-d479a7ea7d28';
   final String _weatherApiKey = '539b5e304cc283331365be92545f77bd';
   Map<String, dynamic>? _currentWeather;
   bool _isLoadingWeather = false;
@@ -69,7 +69,7 @@ class _MapScreenState extends State<MapScreen> {
         try {
           final result =
               await InternetAddress.lookup('services.sentinel-hub.com')
-                  .timeout(const Duration(seconds: 5));
+                  .timeout(const Duration(seconds: 10));
           if (result.isEmpty || result[0].rawAddress.isEmpty) {
             throw Exception('Pas de connexion internet');
           }
@@ -230,16 +230,8 @@ class _MapScreenState extends State<MapScreen> {
               },
             ),
             children: [
-              // Couche de base OpenStreetMap
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'vms.maxime.app',
-                backgroundColor: Colors.white,
-                maxZoom: 18,
-                minZoom: 3,
-              ),
               // Couche Sentinel Hub
-              if (_isInitialized && _accessToken != null)
+              if (_accessToken != null)
                 TileLayer(
                   urlTemplate:
                       'https://services.sentinel-hub.com/ogc/wms/{instanceId}?'
@@ -247,19 +239,19 @@ class _MapScreenState extends State<MapScreen> {
                       '&SERVICE=WMS'
                       '&VERSION=1.3.0'
                       '&LAYERS={layer}'
-                      '&WIDTH=512' // Augmentation de la résolution
-                      '&HEIGHT=512' // Augmentation de la résolution
+                      '&WIDTH=1024' // Augmentation de la résolution
+                      '&HEIGHT=1024' // Augmentation de la résolution
                       '&CRS=EPSG:3857'
                       '&BBOX={bbox}'
-                      '&TIME=2023-01-01/2023-12-31'
+                      '&TIME=2023-01-01/2023-06-31'
                       '&FORMAT=image/png'
                       '&TRANSPARENT=true'
                       '&access_token={accessToken}'
-                      '&SHOWLOGO=false'
-                      '&MAXCC=10' // Réduction de la couverture nuageuse maximale
-                      '&PREVIEW=1' // Meilleure qualité
-                      '&UPDATED_FROM=2023-01-01T00:00:00Z'
-                      '&UPDATED_TO=2023-12-31T23:59:59Z',
+                      //'&SHOWLOGO=false'
+                      '&MAXCC=20', // Réduction de la couverture nuageuse maximale
+                  //'&PREVIEW=1' // Meilleure qualité
+                  //'&UPDATED_FROM=2023-01-01T00:00:00Z'
+                  // '&UPDATED_TO=2023-12-31T23:59:59Z',
                   additionalOptions: {
                     'instanceId': _instanceId,
                     'layer': _selectedLayer,
@@ -267,6 +259,15 @@ class _MapScreenState extends State<MapScreen> {
                   },
                   tileProvider: SentinelTileProvider(),
                   backgroundColor: Colors.transparent,
+                  maxZoom: 18,
+                  minZoom: 3,
+                )
+              else
+                // Couche de base OpenStreetMap
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'vms.maxime.app',
+                  backgroundColor: Colors.white,
                   maxZoom: 18,
                   minZoom: 3,
                 ),
@@ -445,17 +446,17 @@ class _MapScreenState extends State<MapScreen> {
 
   void _showLayerSelector(BuildContext context) {
     final layers = {
-      '1_TRUE_COLOR': {
+      'TRUE_COLOR': {
         'name': 'Couleur Naturelle',
         'description': 'Vue en couleurs naturelles',
         'icon': Icons.color_lens,
       },
-      '3_NDVI': {
+      'NDVI': {
         'name': 'NDVI',
         'description': 'Indice de végétation',
         'icon': Icons.grass,
       },
-      '5-MOISTURE-INDEX1': {
+      'MOISTURE_INDEX': {
         'name': 'Humidité',
         'description': 'Niveau d\'humidité du sol',
         'icon': Icons.water_drop,
