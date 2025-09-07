@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -21,18 +22,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
-    // Les paramètres seront gérés différemment
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _darkMode = prefs.getBool('darkMode') ?? false;
+        _notificationsEnabled = prefs.getBool('notifications') ?? true;
+        _selectedLanguage = prefs.getString('language') ?? 'Français';
+      });
+    } catch (e) {
+      print('Erreur lors du chargement des paramètres: $e');
+    }
   }
 
   Future<void> _saveSettings() async {
-    // Cette méthode n'est plus nécessaire car nous n'utilisons plus SharedPreferences
-    // Les paramètres seront gérés différemment
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('darkMode', _darkMode);
+      await prefs.setBool('notifications', _notificationsEnabled);
+      await prefs.setString('language', _selectedLanguage);
+
+      // Notifier le changement de thème
+      if (mounted) {
+        final themeNotifier =
+            Provider.of<ThemeNotifier>(context, listen: false);
+        themeNotifier.setTheme(_darkMode ? ThemeMode.dark : ThemeMode.light);
+      }
+    } catch (e) {
+      print('Erreur lors de la sauvegarde des paramètres: $e');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel>(context);
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -56,7 +79,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: _darkMode,
                   onChanged: (value) {
                     setState(() => _darkMode = value);
-                    // Implémenter le changement de thème ici
+                    _saveSettings();
                   },
                 ),
                 Divider(height: 1),
@@ -74,6 +97,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (newValue) {
                       if (newValue != null) {
                         setState(() => _selectedLanguage = newValue);
+                        _saveSettings();
+                        _showLanguageChangeSnackbar();
                       }
                     },
                   ),
@@ -91,6 +116,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: _notificationsEnabled,
               onChanged: (value) {
                 setState(() => _notificationsEnabled = value);
+                _saveSettings();
+                _showNotificationSnackbar(value);
               },
             ),
           ),
@@ -106,7 +133,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: Icon(Icons.person),
                     title: Text('Informations du compte'),
                     onTap: () {
-                      // Naviguer vers l'écran d'informations du compte
+                      _showAccountInfo(context, user);
                     },
                   ),
                 if (user.name != null) Divider(height: 1),
@@ -114,7 +141,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.help, color: Colors.blue),
                   title: Text('Aide et support'),
                   onTap: () {
-                    // Naviguer vers l'écran d'aide
+                    _showHelpSupport(context);
                   },
                 ),
                 Divider(height: 1),
@@ -122,7 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: Icon(Icons.privacy_tip, color: Colors.green),
                   title: Text('Confidentialité et sécurité'),
                   onTap: () {
-                    // Naviguer vers l'écran de confidentialité
+                    _showPrivacySecurity(context);
                   },
                 ),
               ],
@@ -135,22 +162,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Card(
             child: Column(
               children: [
-                ListTile(
-                  leading: Icon(Icons.logout, color: Colors.red),
-                  title:
-                      Text('Déconnexion', style: TextStyle(color: Colors.red)),
-                  onTap: () => _showLogoutConfirmation(context),
-                ),
-                if (user.name == null) Divider(height: 1),
-                if (user.name == null)
+                if (user.name != null)
                   ListTile(
-                    leading: Icon(Icons.login, color: Colors.green),
-                    title: Text('Connexion',
-                        style: TextStyle(color: Colors.white)),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/login');
-                    },
+                    leading: Icon(Icons.logout, color: Colors.red),
+                    title: Text('Déconnexion',
+                        style: TextStyle(color: Colors.red)),
+                    onTap: () => _showLogoutConfirmation(context),
                   ),
+                if (user.name != null) Divider(height: 1),
+                ListTile(
+                  leading: Icon(
+                    user.name != null ? Icons.login : Icons.login,
+                    color: user.name != null ? Colors.blue : Colors.green,
+                  ),
+                  title: Text(
+                    user.name != null ? 'Changer de compte' : 'Connexion',
+                    style: TextStyle(
+                      color: user.name != null ? Colors.blue : Colors.green,
+                    ),
+                  ),
+                  onTap: () {
+                    if (user.name != null) {
+                      _showSwitchAccount(context);
+                    } else {
+                      Navigator.pushNamed(context, '/register');
+                    }
+                  },
+                ),
               ],
             ),
           ),
@@ -186,6 +224,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Text(
                     user.email ?? 'Email non disponible',
                     style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Compte vérifié',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -228,12 +274,131 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Provider.of<UserModel>(context, listen: false).logout();
                 Navigator.of(context).pop();
                 Navigator.pushNamedAndRemoveUntil(
-                    context, '/', (route) => false);
+                    context, '/register', (route) => false);
               },
             ),
           ],
         );
       },
     );
+  }
+
+  void _showLanguageChangeSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content:
+            Text('La langue sera changée au redémarrage de l\'application'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showNotificationSnackbar(bool enabled) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            enabled ? 'Notifications activées' : 'Notifications désactivées'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showAccountInfo(BuildContext context, UserModel user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Informations du compte'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nom: ${user.name ?? 'Non renseigné'}'),
+            SizedBox(height: 8),
+            Text('Email: ${user.email ?? 'Non renseigné'}'),
+            SizedBox(height: 8),
+            Text('Statut: Compte vérifié'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpSupport(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Aide et support'),
+        content: Text('Pour toute assistance, veuillez contacter:\n'
+            '• Email: support@agrigeo.com\n'
+            '• Téléphone: +33 1 23 45 67 89\n'
+            '• Horaires: Lun-Ven 9h-18h'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacySecurity(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Confidentialité et sécurité'),
+        content: Text('Vos données sont sécurisées et cryptées.\n\n'
+            'Nous respectons votre vie privée et n\'utilisons vos données '
+            'que pour améliorer votre expérience avec AgriGéo.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSwitchAccount(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Changer de compte'),
+        content: Text('Vous allez être déconnecté pour pouvoir vous connecter '
+            'avec un autre compte.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showLogoutConfirmation(context);
+            },
+            child: Text('Continuer'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Classe pour gérer le changement de thème
+class ThemeNotifier with ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  ThemeMode get themeMode => _themeMode;
+
+  void setTheme(ThemeMode themeMode) {
+    _themeMode = themeMode;
+    notifyListeners();
   }
 }

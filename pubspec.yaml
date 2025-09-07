@@ -11,6 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  shared_preferences: ^2.2.2
 
   # 🔥 Firebase
   firebase_core: ^3.12.1
@@ -65,7 +69,7 @@ dependencies:
 
   # 📊 Data Viz
   syncfusion_flutter_charts: ^29.1.33
-  intl: ^0.18.0
+  intl: ^0.19.0  # ← CHANGÉ DE 0.18.0 À 0.19.0
 
   # 🌐 Utilitaires
   url_launcher: ^6.2.6
@@ -115,7 +119,6 @@ dependency_overrides:
   material_color_utilities: ^0.12.0
   unicode: ^1.1.8
   vm_service: ^15.0.0
-
 
 flutter_launcher_icons:
   android: true

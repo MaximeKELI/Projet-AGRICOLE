@@ -15,6 +15,7 @@ import 'package:app_agrigeo/screens/settings_screen.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -60,19 +61,63 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => UserModel()),
+        ChangeNotifierProvider(create: (_) => ThemeNotifier()),
       ],
       child: AgriGeoApp(),
     ),
   );
 }
 
+// Classe pour gérer le changement de thème
+class ThemeNotifier with ChangeNotifier {
+  ThemeMode _themeMode = ThemeMode.light;
+
+  ThemeMode get themeMode => _themeMode;
+
+  ThemeNotifier() {
+    _loadThemePreference();
+  }
+
+  Future<void> _loadThemePreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isDarkMode = prefs.getBool('darkMode') ?? false;
+      _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
+      notifyListeners();
+    } catch (e) {
+      print('Erreur lors du chargement du thème: $e');
+    }
+  }
+
+  void setTheme(ThemeMode themeMode) async {
+    _themeMode = themeMode;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('darkMode', themeMode == ThemeMode.dark);
+    } catch (e) {
+      print('Erreur lors de la sauvegarde du thème: $e');
+    }
+  }
+
+  void toggleTheme() {
+    _themeMode =
+        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    setTheme(_themeMode);
+  }
+}
+
 class AgriGeoApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
+      themeMode: themeNotifier.themeMode,
       initialRoute: '/splash',
       routes: {
         '/splash': (context) => const SplashScreen(),
@@ -184,13 +229,33 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
           title: Text(_selectedIndex == 0 ? 'Accueil' : 'Carte'),
-          backgroundColor: Colors.green[800],
+          backgroundColor: Theme.of(context).primaryColor,
+          elevation: 0,
           actions: [
+            IconButton(
+              icon: Icon(Icons.brightness_6),
+              onPressed: () {
+                themeNotifier.toggleTheme();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      themeNotifier.themeMode == ThemeMode.dark
+                          ? 'Mode sombre activé'
+                          : 'Mode clair activé',
+                    ),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              },
+              tooltip: 'Changer le thème',
+            ),
             IconButton(
               icon: const Icon(Icons.logout),
               onPressed: _logout,
@@ -199,6 +264,7 @@ class _MainScreenState extends State<MainScreen> {
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () => Navigator.pushNamed(context, '/settings'),
+              tooltip: 'Paramètres',
             ),
           ],
         ),
@@ -215,7 +281,7 @@ class _MainScreenState extends State<MainScreen> {
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _selectedIndex,
-          selectedItemColor: Colors.green[800],
+          selectedItemColor: Theme.of(context).primaryColor,
           unselectedItemColor: Colors.grey,
           onTap: _onItemTapped,
           items: const [
