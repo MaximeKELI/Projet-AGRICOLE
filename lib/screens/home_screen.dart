@@ -56,9 +56,8 @@ class _HomeScreenState extends State<HomeScreen>
     final name = (box.get('fullName') as String?)?.trim();
     final email = (box.get('email') as String?)?.trim();
     setState(() {
-      _greetingName = (name != null && name.isNotEmpty)
-          ? name
-          : (email ?? 'Utilisateur');
+      _greetingName =
+          (name != null && name.isNotEmpty) ? name : (email ?? 'Utilisateur');
     });
   }
 
@@ -354,16 +353,40 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _logout(BuildContext context) async {
-    try {
-      await Provider.of<UserModel>(context, listen: false).logout();
-      if (mounted) {
-        Navigator.popUntil(context, (route) => route.isFirst);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+    // Afficher la boîte de dialogue de confirmation
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmation'),
+          content: Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text('Déconnexion', style: TextStyle(color: Colors.red)),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
         );
+      },
+    );
+
+    // Si l'utilisateur confirme la déconnexion
+    if (confirm == true) {
+      try {
+        await Provider.of<UserModel>(context, listen: false).logout();
+        if (mounted) {
+          Navigator.popUntil(context, (route) => route.isFirst);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors de la déconnexion: $e')),
+          );
+        }
       }
     }
   }

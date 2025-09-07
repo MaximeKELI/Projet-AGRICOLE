@@ -13,7 +13,8 @@ import 'package:app_agrigeo/screens/splash_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,9 +23,10 @@ void main() async {
   await Hive.openBox('session');
 
   // Setup SQLite FFI on desktop (non-web)
-  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.linux ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.macOS)) {
+  if (!kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.linux ||
+          defaultTargetPlatform == TargetPlatform.windows ||
+          defaultTargetPlatform == TargetPlatform.macOS)) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
   }
@@ -95,15 +97,39 @@ class _MainScreenState extends State<MainScreen> {
 
   // Définir les écrans dans l'ordre correspondant aux indices de la barre de navigation
   final List<Widget> _screens = [
-    HomeScreen(),  // index 0
-    MapScreen(),   // index 1
+    HomeScreen(), // index 0
+    MapScreen(), // index 1
   ];
 
   Future<void> _logout() async {
-    final box = Hive.box('session');
-    await box.clear();
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/register');
+    // Afficher la boîte de dialogue de confirmation
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Confirmation'),
+          content: Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('Annuler'),
+              onPressed: () => Navigator.of(context).pop(false),
+            ),
+            TextButton(
+              child: Text('Déconnexion', style: TextStyle(color: Colors.red)),
+              onPressed: () => Navigator.of(context).pop(true),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Si l'utilisateur confirme la déconnexion
+    if (confirm == true) {
+      final box = Hive.box('session');
+      await box.clear();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/register');
+      }
     }
   }
 
@@ -142,7 +168,7 @@ class _MainScreenState extends State<MainScreen> {
 
   Future<bool> _onWillPop() async {
     final now = DateTime.now();
-    if (_lastBackPressTime == null || 
+    if (_lastBackPressTime == null ||
         now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
       _lastBackPressTime = now;
       ScaffoldMessenger.of(context).showSnackBar(
