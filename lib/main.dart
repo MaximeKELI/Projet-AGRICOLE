@@ -13,6 +13,7 @@ import 'package:app_agrigeo/screens/splash_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
+import 'package:app_agrigeo/screens/documents_screen.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -144,6 +145,7 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     HomeScreen(), // index 0
     MapScreen(), // index 1
+    DocumentsScreen(), // index 2
   ];
 
   Future<void> _logout() async {
@@ -235,7 +237,7 @@ class _MainScreenState extends State<MainScreen> {
       onWillPop: _onWillPop,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_selectedIndex == 0 ? 'Accueil' : 'Carte'),
+          title: Text(_selectedIndex == 0 ? 'Accueil' : _selectedIndex == 1 ? 'Carte' : 'Fiches'),
           backgroundColor: Theme.of(context).primaryColor,
           elevation: 0,
           actions: [
@@ -284,9 +286,11 @@ class _MainScreenState extends State<MainScreen> {
           selectedItemColor: Theme.of(context).primaryColor,
           unselectedItemColor: Colors.grey,
           onTap: _onItemTapped,
+          type: BottomNavigationBarType.fixed,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Accueil'),
             BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Carte'),
+            BottomNavigationBarItem(icon: Icon(Icons.description), label: 'Fiches'),
           ],
         ),
       ),

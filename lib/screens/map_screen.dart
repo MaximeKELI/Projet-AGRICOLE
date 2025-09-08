@@ -19,55 +19,71 @@ class _MapScreenState extends State<MapScreen> {
   List<String> _localConsumption = [];
   Map<String, dynamic>? _locationData;
   
-  // Données de sol par région (simulées)
+  // Données de sol par région (simulées) - Villes togolaises et données mondiales diversifiées
   final Map<String, Map<String, dynamic>> _soilDatabase = {
-    'dakar': {
-      'soilType': 'Sol sableux côtier',
-      'ph': '6.5-7.2',
-      'texture': 'Sableuse',
-      'drainage': 'Bon',
-      'crops': ['Tomate', 'Oignon', 'Carotte', 'Salade'],
-      'localConsumption': ['Tomate', 'Oignon', 'Riz', 'Mil']
+    'lomé': {
+      'soilType': 'Sol sableux côtier tropical',
+      'ph': '6.8-7.5',
+      'texture': 'Sableuse fine',
+      'drainage': 'Excellent',
+      'crops': ['Maïs', 'Tomate', 'Piment', 'Gombo', 'Patate douce'],
+      'localConsumption': ['Maïs', 'Igname', 'Manioc', 'Tomate', 'Piment']
     },
-    'thiès': {
-      'soilType': 'Sol ferrugineux tropical',
-      'ph': '5.8-6.5',
-      'texture': 'Argilo-sableuse',
-      'drainage': 'Modéré',
-      'crops': ['Arachide', 'Mil', 'Sorgho', 'Niébé'],
-      'localConsumption': ['Arachide', 'Mil', 'Sorgho', 'Maïs']
-    },
-    'kaolack': {
-      'soilType': 'Sol alluvial',
-      'ph': '6.0-7.0',
-      'texture': 'Limono-argileuse',
-      'drainage': 'Bon à modéré',
-      'crops': ['Riz', 'Arachide', 'Mil', 'Tomate'],
-      'localConsumption': ['Riz', 'Arachide', 'Mil', 'Légumes']
-    },
-    'saint-louis': {
-      'soilType': 'Sol hydromorphe',
-      'ph': '6.2-7.5',
-      'texture': 'Argileuse',
-      'drainage': 'Faible à modéré',
-      'crops': ['Riz', 'Oignon', 'Tomate', 'Canne à sucre'],
-      'localConsumption': ['Riz', 'Oignon', 'Poisson', 'Légumes']
-    },
-    'ziguinchor': {
-      'soilType': 'Sol de mangrove',
-      'ph': '5.5-6.8',
+    'sokodé': {
+      'soilType': 'Sol ferralitique rouge',
+      'ph': '5.5-6.2',
       'texture': 'Argilo-limoneuse',
-      'drainage': 'Variable',
-      'crops': ['Riz', 'Palmier à huile', 'Anacarde', 'Mangue'],
-      'localConsumption': ['Riz', 'Poisson', 'Fruits tropicaux', 'Légumes']
+      'drainage': 'Modéré à bon',
+      'crops': ['Igname', 'Manioc', 'Coton', 'Sorgho', 'Arachide'],
+      'localConsumption': ['Igname', 'Manioc', 'Mil', 'Sorgho', 'Haricot']
     },
-    'tambacounda': {
-      'soilType': 'Sol ferralitique',
-      'ph': '5.2-6.0',
-      'texture': 'Sablo-argileuse',
+    'kara': {
+      'soilType': 'Sol de savane soudanienne',
+      'ph': '6.0-6.8',
+      'texture': 'Sablo-limoneuse',
       'drainage': 'Bon',
-      'crops': ['Coton', 'Sésame', 'Sorgho', 'Mil'],
-      'localConsumption': ['Mil', 'Sorgho', 'Arachide', 'Légumineuses']
+      'crops': ['Mil', 'Sorgho', 'Niébé', 'Sésame', 'Coton'],
+      'localConsumption': ['Mil', 'Sorgho', 'Niébé', 'Arachide', 'Sésame']
+    },
+    'atakpamé': {
+      'soilType': 'Sol volcanique fertile',
+      'ph': '6.5-7.2',
+      'texture': 'Limono-argileuse riche',
+      'drainage': 'Excellent',
+      'crops': ['Café', 'Cacao', 'Banane plantain', 'Taro', 'Avocat'],
+      'localConsumption': ['Igname', 'Banane plantain', 'Taro', 'Café', 'Fruits']
+    },
+    'kpalimé': {
+      'soilType': 'Sol forestier humide',
+      'ph': '5.8-6.5',
+      'texture': 'Argileuse humifère',
+      'drainage': 'Modéré',
+      'crops': ['Cacao', 'Café', 'Palmier à huile', 'Banane', 'Plantain'],
+      'localConsumption': ['Banane plantain', 'Igname', 'Cacao', 'Huile de palme', 'Fruits']
+    },
+    'dapaong': {
+      'soilType': 'Sol sahélien pauvre',
+      'ph': '6.8-7.8',
+      'texture': 'Sableuse grossière',
+      'drainage': 'Très bon',
+      'crops': ['Mil', 'Sorgho', 'Niébé', 'Pastèque', 'Oignon'],
+      'localConsumption': ['Mil', 'Sorgho', 'Niébé', 'Oignon', 'Légumes secs']
+    },
+    'tsévié': {
+      'soilType': 'Sol alluvial de plateau',
+      'ph': '6.2-7.0',
+      'texture': 'Limoneuse équilibrée',
+      'drainage': 'Bon à modéré',
+      'crops': ['Maïs', 'Manioc', 'Tomate', 'Gombo', 'Ananas'],
+      'localConsumption': ['Maïs', 'Manioc', 'Tomate', 'Ananas', 'Légumes']
+    },
+    'aného': {
+      'soilType': 'Sol lagunaire salé',
+      'ph': '7.2-8.0',
+      'texture': 'Sablo-argileuse saline',
+      'drainage': 'Variable selon marées',
+      'crops': ['Cocotier', 'Légumes résistants au sel', 'Patate douce', 'Manioc'],
+      'localConsumption': ['Poisson', 'Coco', 'Manioc', 'Légumes', 'Fruits de mer']
     }
   };
 
@@ -133,14 +149,52 @@ class _MapScreenState extends State<MapScreen> {
     
     setState(() {
       _searchedLocation = locationName.toUpperCase();
-      _locationData = {
-        'soilType': 'Sol tropical mixte',
-        'ph': '6.0-7.0',
-        'texture': 'Argilo-sableuse',
-        'drainage': 'Modéré',
-        'crops': ['Mil', 'Sorgho', 'Arachide', 'Légumes'],
-        'localConsumption': ['Céréales', 'Légumineuses', 'Légumes', 'Fruits']
-      };
+      // Données génériques basées sur différents types de sols mondiaux
+      final List<Map<String, dynamic>> globalSoilTypes = [
+        {
+          'soilType': 'Sol de prairie tempérée',
+          'ph': '6.5-7.5',
+          'texture': 'Limoneuse profonde',
+          'drainage': 'Excellent',
+          'crops': ['Blé', 'Maïs', 'Soja', 'Tournesol'],
+          'localConsumption': ['Céréales', 'Légumineuses', 'Huiles végétales', 'Légumes']
+        },
+        {
+          'soilType': 'Sol méditerranéen calcaire',
+          'ph': '7.5-8.2',
+          'texture': 'Argilo-calcaire',
+          'drainage': 'Bon',
+          'crops': ['Olivier', 'Vigne', 'Amandier', 'Lavande'],
+          'localConsumption': ['Olives', 'Raisin', 'Amandes', 'Herbes aromatiques']
+        },
+        {
+          'soilType': 'Sol de toundra acide',
+          'ph': '4.5-5.5',
+          'texture': 'Tourbeuse organique',
+          'drainage': 'Faible',
+          'crops': ['Avoine', 'Orge', 'Pomme de terre', 'Baies'],
+          'localConsumption': ['Céréales rustiques', 'Tubercules', 'Baies sauvages', 'Champignons']
+        },
+        {
+          'soilType': 'Sol de delta alluvial',
+          'ph': '6.8-7.3',
+          'texture': 'Limono-argileuse fertile',
+          'drainage': 'Modéré à bon',
+          'crops': ['Riz', 'Canne à sucre', 'Jute', 'Légumes'],
+          'localConsumption': ['Riz', 'Sucre', 'Poisson', 'Légumes verts']
+        },
+        {
+          'soilType': 'Sol de montagne rocailleux',
+          'ph': '6.0-7.0',
+          'texture': 'Graveleuse drainante',
+          'drainage': 'Très bon',
+          'crops': ['Quinoa', 'Pomme de terre', 'Orge', 'Légumineuses'],
+          'localConsumption': ['Tubercules', 'Céréales d\'altitude', 'Légumineuses', 'Herbes']
+        }
+      ];
+      
+      final randomSoil = globalSoilTypes[DateTime.now().millisecondsSinceEpoch % globalSoilTypes.length];
+      _locationData = randomSoil;
       _localConsumption = List<String>.from(_locationData!['localConsumption']);
       _isLoading = false;
     });
@@ -419,12 +473,12 @@ class _MapScreenState extends State<MapScreen> {
 
   Widget _buildExampleLocations() {
     final examples = [
-      {'name': 'Dakar', 'description': 'Sol sableux côtier'},
-      {'name': 'Thiès', 'description': 'Sol ferrugineux tropical'},
-      {'name': 'Kaolack', 'description': 'Sol alluvial'},
-      {'name': 'Saint-Louis', 'description': 'Sol hydromorphe'},
-      {'name': 'Ziguinchor', 'description': 'Sol de mangrove'},
-      {'name': 'Tambacounda', 'description': 'Sol ferralitique'},
+      {'name': 'Lomé', 'description': 'Sol sableux côtier tropical'},
+      {'name': 'Sokodé', 'description': 'Sol ferralitique rouge'},
+      {'name': 'Kara', 'description': 'Sol de savane soudanienne'},
+      {'name': 'Atakpamé', 'description': 'Sol volcanique fertile'},
+      {'name': 'Kpalimé', 'description': 'Sol forestier humide'},
+      {'name': 'Dapaong', 'description': 'Sol sahélien pauvre'},
     ];
 
     return Card(
@@ -535,7 +589,7 @@ class _MapScreenState extends State<MapScreen> {
                     TextField(
                       controller: _locationController,
                       decoration: InputDecoration(
-                        hintText: 'Ex: Dakar, Thiès, Kaolack...',
+                        hintText: 'Ex: Lomé, Sokodé, Kara, Atakpamé...',
                         prefixIcon: const Icon(Icons.location_on, color: Colors.green),
                         suffixIcon: _isLoading
                             ? const SizedBox(
