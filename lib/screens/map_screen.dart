@@ -1,18 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:math' as math;
-import 'dart:io';
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter/rendering.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:webview_flutter_android/webview_flutter_android.dart';
-import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 class MapScreen extends StatefulWidget {
   const MapScreen({Key? key}) : super(key: key);
@@ -22,995 +11,620 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  final MapController _mapController = MapController();
-  final List<LatLng> _polygonPoints = [];
-  bool _isDrawing = false;
-  String _selectedLayer = 'true_color';
+  final TextEditingController _locationController = TextEditingController();
+  bool _isLoading = false;
   String? _errorMessage;
-  String? _accessToken;
-  bool _isLoading = true;
-  bool _isInitialized = false;
-  bool _showWebView = false;
-  late WebViewController _webViewController;
-
-  // Credentials Sentinel Hub
-  final String _clientId = 'ddfc8b23-3220-4e4a-86fa-ea6f2a2587ec';
-  final String _clientSecret = '1D63gwT8YIVTZoc4V7QHtkryWm2BtItk';
-  final String _instanceId = 'd688eebb-fbc6-4731-86a7-d479a7ea7d28';
-  final String _weatherApiKey = '539b5e304cc283331365be92545f77bd';
-  Map<String, dynamic>? _currentWeather;
-  bool _isLoadingWeather = false;
-  bool _isLoadingNDVI = false;
-  double? _averageNDVI;
+  
+  String? _searchedLocation;
+  List<String> _localConsumption = [];
+  Map<String, dynamic>? _locationData;
+  
+  // Données de sol par région (simulées)
+  final Map<String, Map<String, dynamic>> _soilDatabase = {
+    'dakar': {
+      'soilType': 'Sol sableux côtier',
+      'ph': '6.5-7.2',
+      'texture': 'Sableuse',
+      'drainage': 'Bon',
+      'crops': ['Tomate', 'Oignon', 'Carotte', 'Salade'],
+      'localConsumption': ['Tomate', 'Oignon', 'Riz', 'Mil']
+    },
+    'thiès': {
+      'soilType': 'Sol ferrugineux tropical',
+      'ph': '5.8-6.5',
+      'texture': 'Argilo-sableuse',
+      'drainage': 'Modéré',
+      'crops': ['Arachide', 'Mil', 'Sorgho', 'Niébé'],
+      'localConsumption': ['Arachide', 'Mil', 'Sorgho', 'Maïs']
+    },
+    'kaolack': {
+      'soilType': 'Sol alluvial',
+      'ph': '6.0-7.0',
+      'texture': 'Limono-argileuse',
+      'drainage': 'Bon à modéré',
+      'crops': ['Riz', 'Arachide', 'Mil', 'Tomate'],
+      'localConsumption': ['Riz', 'Arachide', 'Mil', 'Légumes']
+    },
+    'saint-louis': {
+      'soilType': 'Sol hydromorphe',
+      'ph': '6.2-7.5',
+      'texture': 'Argileuse',
+      'drainage': 'Faible à modéré',
+      'crops': ['Riz', 'Oignon', 'Tomate', 'Canne à sucre'],
+      'localConsumption': ['Riz', 'Oignon', 'Poisson', 'Légumes']
+    },
+    'ziguinchor': {
+      'soilType': 'Sol de mangrove',
+      'ph': '5.5-6.8',
+      'texture': 'Argilo-limoneuse',
+      'drainage': 'Variable',
+      'crops': ['Riz', 'Palmier à huile', 'Anacarde', 'Mangue'],
+      'localConsumption': ['Riz', 'Poisson', 'Fruits tropicaux', 'Légumes']
+    },
+    'tambacounda': {
+      'soilType': 'Sol ferralitique',
+      'ph': '5.2-6.0',
+      'texture': 'Sablo-argileuse',
+      'drainage': 'Bon',
+      'crops': ['Coton', 'Sésame', 'Sorgho', 'Mil'],
+      'localConsumption': ['Mil', 'Sorgho', 'Arachide', 'Légumineuses']
+    }
+  };
 
   @override
   void initState() {
     super.initState();
-    _getAccessToken();
   }
 
-  Future<void> _getAccessToken() async {
-    const maxRetries = 3;
-    int retryCount = 0;
+  // Recherche de localisation par nom
+  Future<void> _searchLocation(String locationName) async {
+    if (locationName.trim().isEmpty) {
+      setState(() {
+        _errorMessage = 'Veuillez entrer un nom de lieu';
+      });
+      return;
+    }
 
-    while (retryCount < maxRetries) {
-      try {
-        setState(() {
-          _isLoading = true;
-          _errorMessage = null;
-        });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _locationData = null;
+    });
 
-        print(
-            'Tentative de connexion à Sentinel Hub (${retryCount + 1}/$maxRetries)...');
-        print('Client ID: $_clientId');
-        print('Client Secret: $_clientSecret');
-
-        // Vérifier la connectivité
-        try {
-          final result =
-              await InternetAddress.lookup('services.sentinel-hub.com')
-                  .timeout(const Duration(seconds: 10));
-          if (result.isEmpty || result[0].rawAddress.isEmpty) {
-            throw Exception('Pas de connexion internet');
-          }
-        } catch (e) {
-          print('Erreur de connexion: $e');
-          if (retryCount < maxRetries - 1) {
-            retryCount++;
-            await Future.delayed(const Duration(seconds: 2));
-            continue;
-          }
-          throw Exception('Erreur de connexion: $e');
+    try {
+      // Normaliser le nom de la localisation
+      String normalizedLocation = locationName.toLowerCase().trim();
+      
+      // Rechercher dans la base de données locale
+      Map<String, dynamic>? foundData;
+      String? foundKey;
+      
+      for (String key in _soilDatabase.keys) {
+        if (key.contains(normalizedLocation) || normalizedLocation.contains(key)) {
+          foundData = _soilDatabase[key];
+          foundKey = key;
+          break;
         }
-
-        final client = http.Client();
-        try {
-          final response = await client.post(
-            Uri.parse('https://services.sentinel-hub.com/oauth/token'),
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Accept': 'application/json',
-              'Connection': 'keep-alive',
-            },
-            body: {
-              'grant_type': 'client_credentials',
-              'client_id': _clientId,
-              'client_secret': _clientSecret,
-            },
-          ).timeout(
-            const Duration(seconds: 30),
-            onTimeout: () {
-              throw TimeoutException('La requête a expiré après 30 secondes');
-            },
-          );
-
-          print('Réponse reçue - Code: ${response.statusCode}');
-          print('Headers: ${response.headers}');
-          print('Corps de la réponse: ${response.body}');
-
-          if (response.statusCode == 200 || response.statusCode == 201) {
-            final data = json.decode(response.body);
-            final accessToken = data['access_token'] as String?;
-
-            if (accessToken != null && accessToken.isNotEmpty) {
-              print('Token d\'accès obtenu avec succès');
-              setState(() {
-                _accessToken = accessToken;
-                _isLoading = false;
-                _isInitialized = true;
-              });
-              return;
-            } else {
-              throw Exception('Token d\'accès invalide dans la réponse');
-            }
-          } else {
-            final errorData = json.decode(response.body);
-            throw Exception(
-                'Erreur ${response.statusCode}: ${errorData['error'] ?? 'Erreur inconnue'}');
-          }
-        } finally {
-          client.close();
-        }
-      } catch (e) {
-        print('Erreur détaillée lors de l\'authentification: $e');
-        print('Stack trace: ${StackTrace.current}');
-
-        if (retryCount < maxRetries - 1) {
-          retryCount++;
-          print('Nouvelle tentative dans 2 secondes...');
-          await Future.delayed(const Duration(seconds: 2));
-          continue;
-        }
-
-        setState(() {
-          _errorMessage =
-              'Erreur de connexion après $maxRetries tentatives: $e';
-          _isLoading = false;
-          _isInitialized = false;
-        });
-        return;
       }
+      
+      if (foundData != null) {
+        setState(() {
+          _searchedLocation = foundKey!.toUpperCase();
+          _locationData = foundData;
+          _localConsumption = List<String>.from(foundData!['localConsumption']);
+          _isLoading = false;
+        });
+        _showLocationResults();
+      } else {
+        // Si pas trouvé localement, essayer une recherche générique
+        await _performGenericSearch(locationName);
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Erreur lors de la recherche: $e';
+        _isLoading = false;
+      });
     }
   }
+  
+  Future<void> _performGenericSearch(String locationName) async {
+    // Simulation d'une recherche générique avec des données par défaut
+    await Future.delayed(const Duration(seconds: 1));
+    
+    setState(() {
+      _searchedLocation = locationName.toUpperCase();
+      _locationData = {
+        'soilType': 'Sol tropical mixte',
+        'ph': '6.0-7.0',
+        'texture': 'Argilo-sableuse',
+        'drainage': 'Modéré',
+        'crops': ['Mil', 'Sorgho', 'Arachide', 'Légumes'],
+        'localConsumption': ['Céréales', 'Légumineuses', 'Légumes', 'Fruits']
+      };
+      _localConsumption = List<String>.from(_locationData!['localConsumption']);
+      _isLoading = false;
+    });
+    _showLocationResults();
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_showWebView) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('EO Browser'),
-          backgroundColor: Colors.green,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                _showWebView = false;
-              });
-            },
-          ),
-        ),
-        body: WebViewWidget(
-          controller: WebViewController()
-            ..setJavaScriptMode(JavaScriptMode.unrestricted)
-            ..loadRequest(
-                Uri.parse('https://apps.sentinel-hub.com/eo-browser/'))
-            ..setNavigationDelegate(
-              NavigationDelegate(
-                onPageFinished: (String url) {
-                  print('Page chargée: $url');
-                },
-              ),
-            ),
-        ),
-      );
-    }
+  void _showLocationResults() {
+    if (_locationData == null) return;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(''),
-        backgroundColor: Colors.green,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-                _isInitialized = false;
-                _errorMessage = null;
-              });
-              _getAccessToken();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.web),
-            onPressed: () {
-              setState(() {
-                _showWebView = true;
-              });
-            },
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              center: const LatLng(8.6195, 0.8248), // Centre Togo
-              zoom: 8.0,
-              maxZoom: 18.0,
-              minZoom: 3.0,
-              rotation: 0.0,
-              onTap: (_, point) {
-                if (_isDrawing) {
-                  setState(() {
-                    _polygonPoints.add(point);
-                  });
-                }
-              },
-            ),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        maxChildSize: 0.95,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (context, scrollController) => Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
             children: [
-              // Couche Sentinel Hub
-              if (_accessToken != null)
-                TileLayer(
-                  urlTemplate:
-                      'https://services.sentinel-hub.com/ogc/wms/{instanceId}?'
-                      'REQUEST=GetMap'
-                      '&SERVICE=WMS'
-                      '&VERSION=1.3.0'
-                      '&LAYERS={layer}'
-                      '&WIDTH=1024' // Augmentation de la résolution
-                      '&HEIGHT=1024' // Augmentation de la résolution
-                      '&CRS=EPSG:3857'
-                      '&BBOX={bbox}'
-                      '&TIME=2023-01-01/2023-06-31'
-                      '&FORMAT=image/png'
-                      '&TRANSPARENT=true'
-                      '&access_token={accessToken}'
-                      //'&SHOWLOGO=false'
-                      '&MAXCC=20', // Réduction de la couverture nuageuse maximale
-                  //'&PREVIEW=1' // Meilleure qualité
-                  //'&UPDATED_FROM=2023-01-01T00:00:00Z'
-                  // '&UPDATED_TO=2023-12-31T23:59:59Z',
-                  additionalOptions: {
-                    'instanceId': _instanceId,
-                    'layer': _selectedLayer,
-                    'accessToken': _accessToken!,
-                  },
-                  tileProvider: SentinelTileProvider(),
-                  backgroundColor: Colors.transparent,
-                  maxZoom: 18,
-                  minZoom: 3,
-                )
-              else
-                // Couche de base OpenStreetMap
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'vms.maxime.app',
-                  backgroundColor: Colors.white,
-                  maxZoom: 18,
-                  minZoom: 3,
-                ),
-              // Contrôles de zoom et rotation
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      FloatingActionButton(
-                        heroTag: 'zoom_in',
-                        onPressed: () {
-                          _mapController.move(
-                              _mapController.center, _mapController.zoom + 1);
-                        },
-                        child: const Icon(Icons.add),
-                      ),
-                      const SizedBox(height: 8),
-                      FloatingActionButton(
-                        heroTag: 'zoom_out',
-                        onPressed: () {
-                          _mapController.move(
-                              _mapController.center, _mapController.zoom - 1);
-                        },
-                        child: const Icon(Icons.remove),
-                      ),
-                      const SizedBox(height: 8),
-                      FloatingActionButton(
-                        heroTag: 'rotate',
-                        onPressed: () {
-                          _mapController.rotate(_mapController.rotation + 15);
-                        },
-                        child: const Icon(Icons.rotate_right),
-                      ),
-                    ],
-                  ),
+              Text(
+                'Analyse de $_searchedLocation',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
                 ),
               ),
-              // Couche de polygone (si dessin en cours)
-              if (_polygonPoints.isNotEmpty)
-                PolygonLayer(
-                  polygons: [
-                    Polygon(
-                      points: _polygonPoints,
-                      color: Colors.blue.withOpacity(0.3),
-                      borderColor: Colors.blue,
-                      borderStrokeWidth: 2,
-                    ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  controller: scrollController,
+                  children: [
+                    _buildSoilInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildCropsCard(),
+                    const SizedBox(height: 16),
+                    _buildLocalConsumptionCard(),
                   ],
                 ),
+              ),
             ],
           ),
-          if (_isLoading)
-            const Center(
-              child: CircularProgressIndicator(),
-            ),
-          if (_errorMessage != null)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      color: Colors.red,
-                      size: 48,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _isLoading = true;
-                          _errorMessage = null;
-                        });
-                        _getAccessToken();
-                      },
-                      child: const Text('Réessayer'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  heroTag: 'draw',
-                  onPressed: () {
-                    setState(() {
-                      _isDrawing = !_isDrawing;
-                      if (!_isDrawing) {
-                        _polygonPoints.clear();
-                      }
-                    });
-                  },
-                  backgroundColor: _isDrawing ? Colors.red : Colors.blue,
-                  child: Icon(_isDrawing ? Icons.stop : Icons.edit),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'layers',
-                  onPressed: () {
-                    _showLayerSelector(context);
-                  },
-                  child: const Icon(Icons.layers),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'coordinates',
-                  onPressed: () {
-                    _showPolygonCoordinates(context);
-                  },
-                  child: const Icon(Icons.location_on),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'weather',
-                  onPressed: () {
-                    if (_polygonPoints.isNotEmpty) {
-                      _fetchWeatherData(_polygonPoints.first);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Veuillez d\'abord dessiner un polygone')),
-                      );
-                    }
-                  },
-                  child: const Icon(Icons.cloud),
-                ),
-                const SizedBox(height: 8),
-                FloatingActionButton(
-                  heroTag: 'ndvi',
-                  onPressed: () {
-                    if (_polygonPoints.isNotEmpty) {
-                      _calculateNDVI();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content:
-                                Text('Veuillez d\'abord dessiner un polygone')),
-                      );
-                    }
-                  },
-                  child: const Icon(Icons.grass),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  void _showLayerSelector(BuildContext context) {
-    final layers = {
-      'TRUE_COLOR': {
-        'name': 'Couleur Naturelle',
-        'description': 'Vue en couleurs naturelles',
-        'icon': Icons.color_lens,
-      },
-      'NDVI': {
-        'name': 'NDVI',
-        'description': 'Indice de végétation',
-        'icon': Icons.grass,
-      },
-      'MOISTURE_INDEX': {
-        'name': 'Humidité',
-        'description': 'Niveau d\'humidité du sol',
-        'icon': Icons.water_drop,
-      },
-    };
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
+  Widget _buildSoilInfoCard() {
+    return Card(
+      elevation: 4,
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Sélectionner une couche',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+            Row(
+              children: [
+                const Icon(Icons.terrain, color: Colors.brown, size: 28),
+                const SizedBox(width: 8),
+                const Text(
+                  'Type de Sol',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.brown,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.brown.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _locationData!['soilType'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSoilCharacteristic('pH', _locationData!['ph']),
+                  _buildSoilCharacteristic('Texture', _locationData!['texture']),
+                  _buildSoilCharacteristic('Drainage', _locationData!['drainage']),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            ...layers.entries.map((entry) {
-              final isSelected = _selectedLayer == entry.key;
-              return ListTile(
-                onTap: () async {
-                  setState(() {
-                    _selectedLayer = entry.key;
-                    _isLoading = true;
-                  });
-                  Navigator.pop(context);
-
-                  // Rafraîchir le token si nécessaire
-                  try {
-                    await _getAccessToken();
-                  } catch (e) {
-                    print('Erreur lors du rafraîchissement du token: $e');
-                  }
-
-                  // Forcer le rafraîchissement de la carte
-                  _mapController.move(
-                      _mapController.center, _mapController.zoom);
-                  setState(() {
-                    _isLoading = false;
-                  });
-                },
-                leading: Icon(
-                  entry.value['icon'] as IconData,
-                  color: isSelected ? Colors.blue : Colors.grey,
-                ),
-                title: Text(
-                  entry.value['name'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? Colors.blue : Colors.black,
-                  ),
-                ),
-                subtitle: Text(
-                  entry.value['description'] as String,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                trailing: isSelected
-                    ? const Icon(
-                        Icons.check_circle,
-                        color: Colors.blue,
-                      )
-                    : null,
-              );
-            }).toList(),
           ],
         ),
       ),
     );
   }
 
-  void _showPolygonCoordinates(BuildContext context) {
-    if (_polygonPoints.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Aucun polygone dessiné')),
-      );
-      return;
-    }
+  Widget _buildSoilCharacteristic(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          Text(value),
+        ],
+      ),
+    );
+  }
 
-    // Calcul de la surface en hectares
-    double calculateArea(List<LatLng> points) {
-      if (points.length < 3) return 0.0;
-
-      double area = 0.0;
-      final earthRadius = 6378137.0; // Rayon de la Terre en mètres
-
-      for (int i = 0; i < points.length; i++) {
-        final j = (i + 1) % points.length;
-        final lat1 = points[i].latitude * math.pi / 180;
-        final lat2 = points[j].latitude * math.pi / 180;
-        final lon1 = points[i].longitude * math.pi / 180;
-        final lon2 = points[j].longitude * math.pi / 180;
-
-        area += (lon2 - lon1) * (2 + math.sin(lat1) + math.sin(lat2));
-      }
-
-      area = area * earthRadius * earthRadius / 2;
-      return area.abs() / 10000; // Conversion en hectares
-    }
-
-    final surface = calculateArea(_polygonPoints);
-
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Container(
+  Widget _buildCropsCard() {
+    final crops = List<String>.from(_locationData!['crops']);
+    
+    return Card(
+      elevation: 4,
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Informations du polygone',
+            Row(
+              children: [
+                const Icon(Icons.agriculture, color: Colors.green, size: 28),
+                const SizedBox(width: 8),
+                const Text(
+                  'Cultures Possibles',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Cultures adaptées à ce type de sol:',
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+                fontSize: 14,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: crops.map((crop) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.green.shade300),
+                  ),
+                  child: Text(
+                    crop,
+                    style: TextStyle(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocalConsumptionCard() {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.restaurant, color: Colors.orange, size: 28),
+                const SizedBox(width: 8),
+                const Text(
+                  'Consommation Locale',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Produits les plus consommés dans la région:',
+              style: TextStyle(
+                color: Colors.grey[600],
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _localConsumption.map((product) {
+                final isRecommended = _locationData!['crops'].contains(product);
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isRecommended ? Colors.orange.shade100 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isRecommended ? Colors.orange.shade300 : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isRecommended)
+                        Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Colors.orange.shade700,
+                        ),
+                      if (isRecommended) const SizedBox(width: 4),
+                      Text(
+                        product,
+                        style: TextStyle(
+                          color: isRecommended ? Colors.orange.shade800 : Colors.grey.shade700,
+                          fontWeight: isRecommended ? FontWeight.w600 : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.blue.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Column(
+              child: Row(
                 children: [
-                  Text(
-                    'Surface: ${surface.toStringAsFixed(2)} hectares',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${(surface * 2.47105).toStringAsFixed(2)} acres',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                  Icon(Icons.lightbulb, color: Colors.blue.shade700, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Les produits avec ✓ sont adaptés au sol local et correspondent à la demande',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExampleLocations() {
+    final examples = [
+      {'name': 'Dakar', 'description': 'Sol sableux côtier'},
+      {'name': 'Thiès', 'description': 'Sol ferrugineux tropical'},
+      {'name': 'Kaolack', 'description': 'Sol alluvial'},
+      {'name': 'Saint-Louis', 'description': 'Sol hydromorphe'},
+      {'name': 'Ziguinchor', 'description': 'Sol de mangrove'},
+      {'name': 'Tambacounda', 'description': 'Sol ferralitique'},
+    ];
+
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             const Text(
-              'Coordonnées des points',
+              'Exemples de localisation',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _polygonPoints.length,
-                itemBuilder: (context, index) {
-                  final point = _polygonPoints[index];
-                  return ListTile(
-                    title: Text('Point ${index + 1}'),
-                    subtitle: Text(
-                      'Latitude: ${point.latitude.toStringAsFixed(6)}\n'
-                      'Longitude: ${point.longitude.toStringAsFixed(6)}',
-                    ),
-                  );
-                },
+            const Text(
+              'Cliquez sur un exemple pour voir l\'analyse',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _fetchWeatherData(LatLng point) async {
-    setState(() {
-      _isLoadingWeather = true;
-    });
-
-    try {
-      final response = await http.get(
-        Uri.parse(
-          'https://api.openweathermap.org/data/2.5/weather?'
-          'lat=${point.latitude}&'
-          'lon=${point.longitude}&'
-          'appid=$_weatherApiKey&'
-          'units=metric&'
-          'lang=fr',
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _currentWeather = json.decode(response.body);
-          _isLoadingWeather = false;
-        });
-        _showWeatherDialog(context);
-      } else {
-        throw Exception('Erreur lors de la récupération des données météo');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoadingWeather = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
-    }
-  }
-
-  void _showWeatherDialog(BuildContext context) {
-    if (_currentWeather == null) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Météo actuelle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.network(
-              'https://openweathermap.org/img/wn/${_currentWeather!['weather'][0]['icon']}@2x.png',
-              width: 100,
-              height: 100,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '${_currentWeather!['main']['temp']?.round()}°C',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _currentWeather!['weather'][0]['description'],
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildWeatherDetail(
-                  Icons.water_drop,
-                  'Humidité',
-                  '${_currentWeather!['main']['humidity']}%',
-                ),
-                _buildWeatherDetail(
-                  Icons.air,
-                  'Vent',
-                  '${_currentWeather!['wind']['speed']} km/h',
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWeatherDetail(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.blue),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(fontSize: 12),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _calculateNDVI() async {
-    if (_polygonPoints.isEmpty || _accessToken == null) return;
-
-    setState(() {
-      _isLoadingNDVI = true;
-    });
-
-    try {
-      // Construire la requête pour l'API Sentinel Hub avec la couche NDVI
-      final response = await http.post(
-        Uri.parse('https://services.sentinel-hub.com/api/v1/process'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_accessToken',
-        },
-        body: jsonEncode({
-          'input': {
-            'bounds': {
-              'bbox': [
-                _polygonPoints.map((p) => p.longitude).reduce(math.min),
-                _polygonPoints.map((p) => p.latitude).reduce(math.min),
-                _polygonPoints.map((p) => p.longitude).reduce(math.max),
-                _polygonPoints.map((p) => p.latitude).reduce(math.max),
-              ],
-              'properties': {
-                'crs': 'http://www.opengis.net/def/crs/OGC/1.3/CRS84'
-              }
-            },
-            'data': [
-              {
-                'type': 'sentinel-2-l2a',
-                'dataFilter': {
-                  'timeRange': {
-                    'from': '2023-01-01T00:00:00Z',
-                    'to': '2023-12-31T23:59:59Z'
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: examples.map((example) {
+                return InkWell(
+                  onTap: () {
+                    _locationController.text = example['name']!;
+                    _searchLocation(example['name']!);
                   },
-                  'maxCloudCoverage': 10
-                }
-              }
-            ]
-          },
-          'output': {
-            'width': 512,
-            'height': 512,
-            'responses': [
-              {
-                'identifier': 'default',
-                'format': {'type': 'image/png'}
-              }
-            ]
-          },
-          'evalscript': '''
-            //VERSION=3
-            function setup() {
-              return {
-                input: ["B04", "B08"],
-                output: { bands: 1 }
-              };
-            }
-            
-            function evaluatePixel(sample) {
-              let ndvi = (sample.B08 - sample.B04) / (sample.B08 + sample.B04);
-              return [ndvi];
-            }
-          '''
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        // Convertir l'image en base64
-        final imageBytes = response.bodyBytes;
-        final base64Image = base64Encode(imageBytes);
-
-        // Analyser l'image NDVI pour obtenir la valeur moyenne
-        final ndviValues = await _analyzeNDVIImage(base64Image);
-        final averageNDVI =
-            ndviValues.reduce((a, b) => a + b) / ndviValues.length;
-
-        setState(() {
-          _averageNDVI = averageNDVI;
-          _isLoadingNDVI = false;
-        });
-
-        _showNDVIDialog(context);
-      } else {
-        throw Exception(
-            'Erreur lors du calcul du NDVI: ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoadingNDVI = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: $e')),
-      );
-    }
-  }
-
-  Future<List<double>> _analyzeNDVIImage(String base64Image) async {
-    try {
-      // Convertir l'image base64 en bytes
-      final imageBytes = base64Decode(base64Image);
-
-      // Analyser les pixels de l'image pour extraire les valeurs NDVI
-      // Les valeurs NDVI sont normalisées entre -1 et 1
-      final pixels = imageBytes.length ~/ 4; // 4 bytes par pixel (RGBA)
-      final ndviValues = <double>[];
-
-      for (var i = 0; i < pixels; i++) {
-        // Extraire la valeur NDVI du pixel (stockée dans le canal rouge)
-        final ndviValue = imageBytes[i * 4] / 255.0 * 2 - 1;
-        ndviValues.add(ndviValue);
-      }
-
-      return ndviValues;
-    } catch (e) {
-      print('Erreur lors de l\'analyse de l\'image NDVI: $e');
-      return [0.0];
-    }
-  }
-
-  void _showNDVIDialog(BuildContext context) {
-    if (_averageNDVI == null) return;
-
-    String ndviStatus;
-    Color statusColor;
-
-    if (_averageNDVI! > 0.6) {
-      ndviStatus = 'Végétation très dense et saine';
-      statusColor = Colors.green;
-    } else if (_averageNDVI! > 0.3) {
-      ndviStatus = 'Végétation modérée';
-      statusColor = Colors.lightGreen;
-    } else if (_averageNDVI! > 0) {
-      ndviStatus = 'Végétation clairsemée';
-      statusColor = Colors.yellow;
-    } else {
-      ndviStatus = 'Pas de végétation';
-      statusColor = Colors.red;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Analyse NDVI'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'NDVI moyen: ${_averageNDVI!.toStringAsFixed(3)}',
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: statusColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                ndviStatus,
-                style: TextStyle(
-                  color: statusColor,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Interprétation NDVI:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '- > 0.6: Végétation très dense et saine\n'
-              '- 0.3 à 0.6: Végétation modérée\n'
-              '- 0 à 0.3: Végétation clairsemée\n'
-              '- < 0: Pas de végétation',
-              style: TextStyle(fontSize: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          example['name']!,
+                          style: TextStyle(
+                            color: Colors.green.shade800,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          example['description']!,
+                          style: TextStyle(
+                            color: Colors.green.shade600,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
-          ),
-        ],
       ),
     );
   }
-}
 
-class SentinelTileProvider extends TileProvider {
   @override
-  ImageProvider getImage(TileCoordinates coords, TileLayer options) {
-    final additionalOptions = options.additionalOptions;
-    final instanceId = additionalOptions['instanceId'] as String;
-    final layer = additionalOptions['layer'] as String;
-    final accessToken = additionalOptions['accessToken'] as String;
-
-    final bbox = _getBoundingBox(coords, options.tileSize.toInt());
-
-    // Construire l'URL avec les paramètres corrects
-    final url =
-        Uri.parse('https://services.sentinel-hub.com/ogc/wms/$instanceId')
-            .replace(queryParameters: {
-      'REQUEST': 'GetMap',
-      'SERVICE': 'WMS',
-      'VERSION': '1.3.0',
-      'LAYERS': layer,
-      'WIDTH': '256',
-      'HEIGHT': '256',
-      'CRS': 'EPSG:3857',
-      'BBOX': bbox,
-      'TIME': '2023-01-01/2023-12-31',
-      'FORMAT': 'image/png',
-      'TRANSPARENT': 'true',
-      'access_token': accessToken,
-      'SHOWLOGO': 'false',
-      'MAXCC': '20',
-      'PREVIEW': '2',
-      'UPDATED_FROM': '2023-01-01T00:00:00Z',
-      'UPDATED_TO': '2023-12-31T23:59:59Z'
-    }).toString();
-
-    print('URL de la tuile: $url');
-    print('Couche sélectionnée: $layer');
-    print('BBOX: $bbox');
-    print('Zoom level: ${coords.z}');
-    print('Tile coordinates: x=${coords.x}, y=${coords.y}');
-
-    return NetworkImage(
-      url,
-      headers: {
-        'Authorization': 'Bearer $accessToken',
-        'Accept': 'image/png',
-      },
-    )..resolve(ImageConfiguration()).addListener(
-        ImageStreamListener(
-          (ImageInfo info, bool _) {
-            print('Image chargée avec succès pour la couche $layer');
-            print(
-                'Dimensions de l\'image: ${info.image.width}x${info.image.height}');
-          },
-          onError: (dynamic error, StackTrace? stackTrace) {
-            print('Erreur lors du chargement de l\'image: $error');
-            print('Stack trace: $stackTrace');
-            if (error.toString().contains('401') ||
-                error.toString().contains('403')) {
-              print('Erreur d\'autorisation - Token peut-être expiré');
-            }
-          },
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Recherche de Localisation'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Entrez le nom de votre localisation',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Ville, village, quartier, région...',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: _locationController,
+                      decoration: InputDecoration(
+                        hintText: 'Ex: Dakar, Thiès, Kaolack...',
+                        prefixIcon: const Icon(Icons.location_on, color: Colors.green),
+                        suffixIcon: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : IconButton(
+                                icon: const Icon(Icons.search),
+                                onPressed: () => _searchLocation(_locationController.text),
+                              ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.green, width: 2),
+                        ),
+                      ),
+                      onSubmitted: _searchLocation,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () => _searchLocation(_locationController.text),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: _isLoading
+                            ? const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text('Recherche en cours...'),
+                                ],
+                              )
+                            : const Text(
+                                'Analyser cette localisation',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_errorMessage != null)
+              Container(
+                margin: const EdgeInsets.only(top: 16),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error, color: Colors.red.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+            _buildExampleLocations(),
+          ],
         ),
-      );
-  }
-
-  String _getBoundingBox(TileCoordinates coords, int tileSize) {
-    final n = math.pow(2, coords.z);
-    final x = coords.x;
-    final y = coords.y;
-
-    final left = (x / n) * 360 - 180;
-    final top = math.atan(math.exp(math.pi * (1 - 2 * y / n))) * 180 / math.pi;
-    final right = ((x + 1) / n) * 360 - 180;
-    final bottom =
-        math.atan(math.exp(math.pi * (1 - 2 * (y + 1) / n))) * 180 / math.pi;
-
-    return '$left,$bottom,$right,$top';
+      ),
+    );
   }
 }
