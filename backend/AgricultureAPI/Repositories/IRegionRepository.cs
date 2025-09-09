@@ -10,5 +10,6 @@ namespace AgricultureAPI.Repositories
         Task<Region> UpdateAsync(Region region);
         Task DeleteAsync(string id);
         Task<IEnumerable<Prefecture>> GetPrefecturesAsync(string regionId);
+        Task<IEnumerable<Commune>> GetCommunesByRegionAsync(string regionId);
     }
 }

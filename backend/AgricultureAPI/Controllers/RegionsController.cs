@@ -28,5 +28,12 @@ namespace AgricultureAPI.Controllers
             var prefectures = await _agricultureService.GetPrefecturesAsync(regionId);
             return Ok(prefectures);
         }
+
+        [HttpGet("{regionId}/communes")]
+        public async Task<ActionResult<IEnumerable<Commune>>> GetCommunesByRegion(string regionId)
+        {
+            var communes = await _agricultureService.GetCommunesByRegionAsync(regionId);
+            return Ok(communes);
+        }
     }
 }

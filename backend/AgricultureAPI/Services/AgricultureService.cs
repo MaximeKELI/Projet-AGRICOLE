@@ -44,6 +44,11 @@ namespace AgricultureAPI.Services
             return await _prefectureRepository.GetCommunesAsync(prefectureId);
         }
 
+        public async Task<IEnumerable<Commune>> GetCommunesByRegionAsync(string regionId)
+        {
+            return await _regionRepository.GetCommunesByRegionAsync(regionId);
+        }
+
         public async Task<SoilType?> GetSoilTypeForCommuneAsync(string communeId)
         {
             var commune = await _communeRepository.GetByIdAsync(communeId);

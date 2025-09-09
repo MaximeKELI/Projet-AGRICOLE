@@ -63,5 +63,14 @@ namespace AgricultureAPI.Repositories
                 .Where(p => p.RegionId == regionId)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Commune>> GetCommunesByRegionAsync(string regionId)
+        {
+            return await _context.Communes
+                .Include(c => c.SoilType)
+                .Include(c => c.Prefecture)
+                .Where(c => c.Prefecture.RegionId == regionId)
+                .ToListAsync();
+        }
     }
 }
