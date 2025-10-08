@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:intl/intl.dart';
 import '../screens/user_model.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +6,259 @@ import 'package:provider/provider.dart';
 import '../models/agricultural_metrics.dart';
 import '../services/agricultural_service.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
-import 'dart:async';
+
+// Classe de traduction
+class AppLocalizations {
+  static const Map<String, Map<String, String>> _translations = {
+    'fr': {
+      'dashboard_title': 'Tableau de Bord Intelligent',
+      'weather_current': 'Météo Actuelle',
+      'ai_recommendations': 'Recommandations IA',
+      'alerts_agricultural': 'Alertes Agricoles',
+      'overview': 'Vue d\'ensemble',
+      'crops': 'Cultures',
+      'total_area': 'Surface Totale',
+      'revenue': 'Revenus',
+      'profit': 'Profit',
+      'analyses': 'Analyses',
+      'crop_distribution': 'Répartition par Type de Culture',
+      'revenue_by_region': 'Revenus par Région',
+      'recent_crops': 'Cultures Récentes',
+      'quick_actions': 'Actions Rapides',
+      'new_crop': 'Nouvelle Culture',
+      'reports': 'Rapports',
+      'search': 'Rechercher',
+      'export': 'Exporter',
+      'settings': 'Paramètres',
+      'refresh': 'Actualiser',
+      'temperature': 'Température',
+      'humidity': 'Humidité',
+      'wind': 'Vent',
+      'condition': 'Condition',
+      'forecast_3_days': 'Prévisions 3 jours',
+      'today': 'Aujourd\'hui',
+      'tomorrow': 'Demain',
+      'day_after_tomorrow': 'Après-demain',
+      'sunny': 'Ensoleillé',
+      'cloudy': 'Nuageux',
+      'rainy': 'Pluie',
+      'irrigation_optimization': 'Optimisation de l\'irrigation',
+      'fertilization_recommended': 'Fertilisation recommandée',
+      'crop_rotation': 'Rotation des cultures',
+      'phytosanitary_treatment': 'Traitement phytosanitaire',
+      'spacing_optimization': 'Optimisation de l\'espacement',
+      'harvest_planning': 'Planification de récolte',
+      'performance_metrics': 'Métriques de Performance',
+      'roi': 'ROI',
+      'efficiency': 'Efficacité',
+      'average_yield': 'Rendement Moyen',
+      'trend': 'Tendance',
+      'return_on_investment': 'Retour sur investissement',
+      'revenue_per_crop': 'Revenus par culture',
+      'average_area_per_crop': 'Surface moyenne par culture',
+      'monthly_growth': 'Croissance mensuelle',
+      'hectares': 'hectares',
+      'fcfa': 'FCFA',
+      'tonnes': 'tonnes',
+      'ha': 'ha',
+      't': 't',
+      'planted': 'Planté',
+      'growing': 'En croissance',
+      'ready_to_harvest': 'Prêt à récolter',
+      'harvested': 'Récolté',
+      'region': 'Région',
+      'area': 'Surface',
+      'expected_yield': 'Rendement attendu',
+      'actual_yield': 'Rendement actuel',
+      'efficiency_percent': 'Efficacité',
+      'total_cost': 'Coût total',
+      'status': 'Statut',
+      'close': 'Fermer',
+      'see_all_alerts': 'Voir toutes les alertes',
+      'add_crop_success': 'Culture ajoutée avec succès!',
+      'export_pdf': 'Export PDF en cours...',
+      'export_excel': 'Export Excel en cours...',
+      'export_image': 'Capture d\'écran en cours...',
+      'search_and_filters': 'Recherche et Filtres',
+      'search_crop': 'Rechercher une culture',
+      'filter_by_crop_type': 'Filtrer par type de culture',
+      'apply': 'Appliquer',
+      'cancel': 'Annuler',
+      'results': 'résultat(s)',
+      'auto_refresh_notification': 'Données actualisées automatiquement',
+      'settings_saved': 'Paramètres sauvegardés avec succès!',
+    },
+    'en': {
+      'dashboard_title': 'Intelligent Dashboard',
+      'weather_current': 'Current Weather',
+      'ai_recommendations': 'AI Recommendations',
+      'alerts_agricultural': 'Agricultural Alerts',
+      'overview': 'Overview',
+      'crops': 'Crops',
+      'total_area': 'Total Area',
+      'revenue': 'Revenue',
+      'profit': 'Profit',
+      'analyses': 'Analyses',
+      'crop_distribution': 'Distribution by Crop Type',
+      'revenue_by_region': 'Revenue by Region',
+      'recent_crops': 'Recent Crops',
+      'quick_actions': 'Quick Actions',
+      'new_crop': 'New Crop',
+      'reports': 'Reports',
+      'search': 'Search',
+      'export': 'Export',
+      'settings': 'Settings',
+      'refresh': 'Refresh',
+      'temperature': 'Temperature',
+      'humidity': 'Humidity',
+      'wind': 'Wind',
+      'condition': 'Condition',
+      'forecast_3_days': '3-day Forecast',
+      'today': 'Today',
+      'tomorrow': 'Tomorrow',
+      'day_after_tomorrow': 'Day After Tomorrow',
+      'sunny': 'Sunny',
+      'cloudy': 'Cloudy',
+      'rainy': 'Rainy',
+      'irrigation_optimization': 'Irrigation Optimization',
+      'fertilization_recommended': 'Recommended Fertilization',
+      'crop_rotation': 'Crop Rotation',
+      'phytosanitary_treatment': 'Phytosanitary Treatment',
+      'spacing_optimization': 'Spacing Optimization',
+      'harvest_planning': 'Harvest Planning',
+      'performance_metrics': 'Performance Metrics',
+      'roi': 'ROI',
+      'efficiency': 'Efficiency',
+      'average_yield': 'Average Yield',
+      'trend': 'Trend',
+      'return_on_investment': 'Return on Investment',
+      'revenue_per_crop': 'Revenue per crop',
+      'average_area_per_crop': 'Average area per crop',
+      'monthly_growth': 'Monthly growth',
+      'hectares': 'hectares',
+      'fcfa': 'FCFA',
+      'tonnes': 'tonnes',
+      'ha': 'ha',
+      't': 't',
+      'planted': 'Planted',
+      'growing': 'Growing',
+      'ready_to_harvest': 'Ready to Harvest',
+      'harvested': 'Harvested',
+      'region': 'Region',
+      'area': 'Area',
+      'expected_yield': 'Expected Yield',
+      'actual_yield': 'Actual Yield',
+      'efficiency_percent': 'Efficiency',
+      'total_cost': 'Total Cost',
+      'status': 'Status',
+      'close': 'Close',
+      'see_all_alerts': 'See all alerts',
+      'add_crop_success': 'Crop added successfully!',
+      'export_pdf': 'PDF export in progress...',
+      'export_excel': 'Excel export in progress...',
+      'export_image': 'Screenshot in progress...',
+      'search_and_filters': 'Search and Filters',
+      'search_crop': 'Search for a crop',
+      'filter_by_crop_type': 'Filter by crop type',
+      'apply': 'Apply',
+      'cancel': 'Cancel',
+      'results': 'result(s)',
+      'auto_refresh_notification': 'Data automatically refreshed',
+      'settings_saved': 'Settings saved successfully!',
+    },
+    'ar': {
+      'dashboard_title': 'لوحة التحكم الذكية',
+      'weather_current': 'الطقس الحالي',
+      'ai_recommendations': 'توصيات الذكاء الاصطناعي',
+      'alerts_agricultural': 'تنبيهات زراعية',
+      'overview': 'نظرة عامة',
+      'crops': 'المحاصيل',
+      'total_area': 'المساحة الإجمالية',
+      'revenue': 'الإيرادات',
+      'profit': 'الربح',
+      'analyses': 'التحليلات',
+      'crop_distribution': 'التوزيع حسب نوع المحصول',
+      'revenue_by_region': 'الإيرادات حسب المنطقة',
+      'recent_crops': 'المحاصيل الأخيرة',
+      'quick_actions': 'إجراءات سريعة',
+      'new_crop': 'محصول جديد',
+      'reports': 'التقارير',
+      'search': 'بحث',
+      'export': 'تصدير',
+      'settings': 'الإعدادات',
+      'refresh': 'تحديث',
+      'temperature': 'درجة الحرارة',
+      'humidity': 'الرطوبة',
+      'wind': 'الرياح',
+      'condition': 'الحالة',
+      'forecast_3_days': 'توقعات 3 أيام',
+      'today': 'اليوم',
+      'tomorrow': 'غداً',
+      'day_after_tomorrow': 'بعد غد',
+      'sunny': 'مشمس',
+      'cloudy': 'غائم',
+      'rainy': 'ممطر',
+      'irrigation_optimization': 'تحسين الري',
+      'fertilization_recommended': 'تسميد موصى به',
+      'crop_rotation': 'دوران المحاصيل',
+      'phytosanitary_treatment': 'معالجة وقائية',
+      'spacing_optimization': 'تحسين المسافات',
+      'harvest_planning': 'تخطيط الحصاد',
+      'performance_metrics': 'مقاييس الأداء',
+      'roi': 'عائد الاستثمار',
+      'efficiency': 'الكفاءة',
+      'average_yield': 'متوسط الإنتاج',
+      'trend': 'الاتجاه',
+      'return_on_investment': 'عائد الاستثمار',
+      'revenue_per_crop': 'الإيرادات لكل محصول',
+      'average_area_per_crop': 'متوسط المساحة لكل محصول',
+      'monthly_growth': 'النمو الشهري',
+      'hectares': 'هكتار',
+      'fcfa': 'فرنك أفريقي',
+      'tonnes': 'طن',
+      'ha': 'هكتار',
+      't': 'طن',
+      'planted': 'مزروع',
+      'growing': 'ينمو',
+      'ready_to_harvest': 'جاهز للحصاد',
+      'harvested': 'محصود',
+      'region': 'المنطقة',
+      'area': 'المساحة',
+      'expected_yield': 'الإنتاج المتوقع',
+      'actual_yield': 'الإنتاج الفعلي',
+      'efficiency_percent': 'الكفاءة',
+      'total_cost': 'التكلفة الإجمالية',
+      'status': 'الحالة',
+      'close': 'إغلاق',
+      'see_all_alerts': 'عرض جميع التنبيهات',
+      'add_crop_success': 'تم إضافة المحصول بنجاح!',
+      'export_pdf': 'جاري تصدير PDF...',
+      'export_excel': 'جاري تصدير Excel...',
+      'export_image': 'جاري التقاط صورة...',
+      'search_and_filters': 'البحث والمرشحات',
+      'search_crop': 'البحث عن محصول',
+      'filter_by_crop_type': 'تصفية حسب نوع المحصول',
+      'apply': 'تطبيق',
+      'cancel': 'إلغاء',
+      'results': 'نتيجة',
+      'auto_refresh_notification': 'تم تحديث البيانات تلقائياً',
+      'settings_saved': 'تم حفظ الإعدادات بنجاح!',
+    },
+  };
+
+  static String getCurrentLanguage() {
+    return 'fr'; // Par défaut
+  }
+
+  static String translate(String key, {String? languageCode}) {
+    final lang = languageCode ?? getCurrentLanguage();
+    return _translations[lang]?[key] ?? _translations['fr']?[key] ?? key;
+  }
+
+  static bool isRTL(String languageCode) {
+    return languageCode == 'ar';
+  }
+}
 
 class IntelligentDashboardScreen extends StatefulWidget {
   const IntelligentDashboardScreen({Key? key}) : super(key: key);
@@ -75,6 +328,11 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
       'learningMode': true,
       'recommendationLevel': 'medium', // low, medium, high
       'autoOptimization': true,
+    },
+    'language': {
+      'code': 'fr', // fr, en, ar, es, pt
+      'name': 'Français',
+      'rtl': false, // Right-to-left for Arabic
     },
   };
 
@@ -364,8 +622,8 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tableau de Bord Intelligent'),
-        backgroundColor: _getPrimaryColor(),
+          title: Text(t('dashboard_title')),
+          backgroundColor: _getPrimaryColor(),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -450,12 +708,12 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
               children: [
                 Icon(Icons.wb_sunny, color: Colors.orange[700]),
                 const SizedBox(width: 8),
-                Text(
-                  'Météo Actuelle',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+        Text(
+          t('weather_current'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
                 const Spacer(),
                 Text(
                   _getTemperatureDisplay(_weatherData!['temperature']),
@@ -470,19 +728,19 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             Row(
               children: [
                 Expanded(
-                  child: _buildWeatherInfo('Humidité', '${_weatherData!['humidity']}%', Icons.water_drop),
+                  child: _buildWeatherInfo(t('humidity'), '${_weatherData!['humidity']}%', Icons.water_drop),
                 ),
                 Expanded(
-                  child: _buildWeatherInfo('Vent', '${_weatherData!['windSpeed']} km/h', Icons.air),
+                  child: _buildWeatherInfo(t('wind'), '${_weatherData!['windSpeed']} km/h', Icons.air),
                 ),
                 Expanded(
-                  child: _buildWeatherInfo('Condition', _weatherData!['condition'], Icons.cloud),
+                  child: _buildWeatherInfo(t('condition'), _weatherData!['condition'], Icons.cloud),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             Text(
-              'Prévisions 3 jours',
+              t('forecast_3_days'),
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -554,12 +812,12 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
               children: [
                 Icon(Icons.psychology, color: Colors.purple[700]),
                 const SizedBox(width: 8),
-                Text(
-                  'Recommandations IA',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+        Text(
+          t('ai_recommendations'),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -691,7 +949,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                 Icon(Icons.notifications_active, color: Colors.orange[700]),
                 const SizedBox(width: 8),
                 Text(
-                  'Alertes Agricoles',
+          t('alerts_agricultural'),
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1139,7 +1397,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Actions Rapides',
+          t('quick_actions'),
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
           ),
@@ -1156,7 +1414,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             ElevatedButton.icon(
                 onPressed: _addNewCrop,
                 icon: const Icon(Icons.add),
-                label: const Text('Nouvelle Culture'),
+                label: Text(t('new_crop')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green[800],
                   foregroundColor: Colors.white,
@@ -1165,7 +1423,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             ElevatedButton.icon(
                 onPressed: _viewReports,
                 icon: const Icon(Icons.assessment),
-                label: const Text('Rapports'),
+                label: Text(t('reports')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue[800],
                   foregroundColor: Colors.white,
@@ -1174,7 +1432,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             ElevatedButton.icon(
               onPressed: _showSearchDialog,
               icon: const Icon(Icons.search),
-              label: const Text('Rechercher'),
+              label: Text(t('search')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange[800],
                 foregroundColor: Colors.white,
@@ -1183,7 +1441,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             ElevatedButton.icon(
               onPressed: _exportData,
               icon: const Icon(Icons.download),
-              label: const Text('Exporter'),
+              label: Text(t('export')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.purple[800],
                 foregroundColor: Colors.white,
@@ -1629,6 +1887,17 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
 
   bool _areNotificationsEnabled() {
     return _settings['notifications']['enabled'] as bool;
+  }
+
+  // Méthodes de traduction
+  String t(String key) {
+    final languageCode = _settings['language']['code'] as String;
+    return AppLocalizations.translate(key, languageCode: languageCode);
+  }
+
+  bool _isRTL() {
+    final languageCode = _settings['language']['code'] as String;
+    return AppLocalizations.isRTL(languageCode);
   }
 
   String _getTemperatureDisplay(double celsius) {
@@ -2294,6 +2563,7 @@ class _SettingsScreenState extends State<_SettingsScreen> {
       ),
       body: ListView(
         children: [
+          _buildLanguageSection(),
           _buildThemeSection(),
           _buildDisplaySection(),
           _buildNotificationSection(),
@@ -2303,6 +2573,43 @@ class _SettingsScreenState extends State<_SettingsScreen> {
           _buildAdvancedSection(),
         ],
       ),
+    );
+  }
+
+  Widget _buildLanguageSection() {
+    return _buildSectionCard(
+      title: 'Langue et Régionalisation',
+      icon: Icons.language,
+      children: [
+        ListTile(
+          title: const Text('Langue de l\'Interface'),
+          subtitle: Text(_currentSettings['language']['name']),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showLanguagePicker(),
+        ),
+        SwitchListTile(
+          title: const Text('Support RTL'),
+          subtitle: const Text('Direction droite à gauche (Arabe)'),
+          value: _currentSettings['language']['rtl'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['language']['rtl'] = value;
+            });
+          },
+        ),
+        ListTile(
+          title: const Text('Format des Nombres'),
+          subtitle: const Text('Séparateur décimal et milliers'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showNumberFormatPicker(),
+        ),
+        ListTile(
+          title: const Text('Format de Date'),
+          subtitle: const Text('Affichage des dates'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showDateFormatPicker(),
+        ),
+      ],
     );
   }
 
@@ -2859,6 +3166,96 @@ class _SettingsScreenState extends State<_SettingsScreen> {
     );
   }
 
+  void _showLanguagePicker() {
+    final languages = [
+      {'code': 'fr', 'name': 'Français', 'flag': '🇫🇷'},
+      {'code': 'en', 'name': 'English', 'flag': '🇺🇸'},
+      {'code': 'ar', 'name': 'العربية', 'flag': '🇸🇦'},
+      {'code': 'es', 'name': 'Español', 'flag': '🇪🇸'},
+      {'code': 'pt', 'name': 'Português', 'flag': '🇵🇹'},
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Choisir la Langue'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: languages.map((lang) => ListTile(
+            leading: Text(lang['flag']!, style: const TextStyle(fontSize: 24)),
+            title: Text(lang['name']!),
+            trailing: _currentSettings['language']['code'] == lang['code'] 
+                ? const Icon(Icons.check, color: Colors.green) 
+                : null,
+            onTap: () {
+              setState(() {
+                _currentSettings['language']['code'] = lang['code']!;
+                _currentSettings['language']['name'] = lang['name']!;
+                _currentSettings['language']['rtl'] = lang['code'] == 'ar';
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showNumberFormatPicker() {
+    final formats = [
+      {'name': 'Français (1 234,56)', 'separator': ',', 'thousands': ' '},
+      {'name': 'Anglais (1,234.56)', 'separator': '.', 'thousands': ','},
+      {'name': 'Arabe (١٬٢٣٤٫٥٦)', 'separator': '.', 'thousands': '٬'},
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Format des Nombres'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: formats.map((format) => ListTile(
+            title: Text(format['name']!),
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Format sélectionné: ${format['name']}')),
+              );
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showDateFormatPicker() {
+    final formats = [
+      {'name': 'DD/MM/YYYY', 'format': 'dd/MM/yyyy'},
+      {'name': 'MM/DD/YYYY', 'format': 'MM/dd/yyyy'},
+      {'name': 'YYYY-MM-DD', 'format': 'yyyy-MM-dd'},
+      {'name': 'DD MMM YYYY', 'format': 'dd MMM yyyy'},
+    ];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Format de Date'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: formats.map((format) => ListTile(
+            title: Text(format['name']!),
+            onTap: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Format sélectionné: ${format['name']}')),
+              );
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
   void _resetSettings() {
     showDialog(
       context: context,
@@ -2914,6 +3311,11 @@ class _SettingsScreenState extends State<_SettingsScreen> {
                     'learningMode': true,
                     'recommendationLevel': 'medium',
                     'autoOptimization': true,
+                  },
+                  'language': {
+                    'code': 'fr',
+                    'name': 'Français',
+                    'rtl': false,
                   },
                 };
               });
