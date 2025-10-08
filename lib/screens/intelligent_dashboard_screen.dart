@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../models/agricultural_metrics.dart';
 import '../services/agricultural_service.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+import 'dart:async';
 
 class IntelligentDashboardScreen extends StatefulWidget {
   const IntelligentDashboardScreen({Key? key}) : super(key: key);
@@ -31,6 +32,51 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
   List<String> _filteredCropTypes = [];
   String _searchQuery = '';
   List<AgriculturalMetrics> _filteredCrops = [];
+  
+  // Paramètres avancés
+  Map<String, dynamic> _settings = {
+    'theme': {
+      'isDarkMode': false,
+      'primaryColor': 'green',
+      'accentColor': 'blue',
+      'fontSize': 'medium',
+    },
+    'notifications': {
+      'enabled': true,
+      'weatherAlerts': true,
+      'aiRecommendations': true,
+      'cropReminders': true,
+      'soundEnabled': true,
+      'vibrationEnabled': true,
+    },
+    'display': {
+      'showWeather': true,
+      'showAIRecommendations': true,
+      'showPerformanceMetrics': true,
+      'showCharts': true,
+      'compactMode': false,
+      'animationsEnabled': true,
+    },
+    'data': {
+      'autoRefresh': true,
+      'refreshInterval': 30, // minutes
+      'cacheEnabled': true,
+      'syncEnabled': true,
+      'backupEnabled': true,
+    },
+    'weather': {
+      'location': 'Dakar',
+      'unit': 'celsius',
+      'forecastDays': 3,
+      'autoLocation': true,
+    },
+    'ai': {
+      'enabled': true,
+      'learningMode': true,
+      'recommendationLevel': 'medium', // low, medium, high
+      'autoOptimization': true,
+    },
+  };
 
   @override
   void initState() {
@@ -46,6 +92,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
     _loadWeatherData();
     _generateAIRecommendations();
     _setupNotifications();
+    _setupAutoRefresh();
   }
 
   @override
@@ -116,36 +163,85 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
   }
 
   Future<void> _generateAIRecommendations() async {
+    if (!_isAIEnabled()) return;
+    
     try {
       // Simulation de recommandations IA basées sur les données
       await Future.delayed(const Duration(milliseconds: 500));
+      
+      final allRecommendations = [
+        {
+          'title': 'Optimisation de l\'irrigation',
+          'description': 'Réduire l\'arrosage de 15% cette semaine pour économiser l\'eau',
+          'priority': 'high',
+          'category': 'irrigation',
+          'impact': '+8% efficacité',
+          'icon': Icons.water_drop,
+        },
+        {
+          'title': 'Fertilisation recommandée',
+          'description': 'Appliquer de l\'engrais azoté sur les cultures de maïs',
+          'priority': 'medium',
+          'category': 'fertilization',
+          'impact': '+12% rendement',
+          'icon': Icons.eco,
+        },
+        {
+          'title': 'Rotation des cultures',
+          'description': 'Planifier la rotation avec des légumineuses pour enrichir le sol',
+          'priority': 'low',
+          'category': 'planning',
+          'impact': '+5% qualité sol',
+          'icon': Icons.rotate_right,
+        },
+        {
+          'title': 'Traitement phytosanitaire',
+          'description': 'Appliquer un traitement préventif contre les parasites',
+          'priority': 'high',
+          'category': 'protection',
+          'impact': '+15% santé',
+          'icon': Icons.medical_services,
+        },
+        {
+          'title': 'Optimisation de l\'espacement',
+          'description': 'Ajuster l\'espacement entre les plants pour maximiser le rendement',
+          'priority': 'medium',
+          'category': 'optimization',
+          'impact': '+6% rendement',
+          'icon': Icons.grid_view,
+        },
+        {
+          'title': 'Planification de récolte',
+          'description': 'Programmer la récolte pour optimiser la qualité',
+          'priority': 'low',
+          'category': 'harvest',
+          'impact': '+3% qualité',
+          'icon': Icons.schedule,
+        },
+      ];
+      
+      // Filtrer selon le niveau de recommandations
+      final level = _getRecommendationLevel();
+      List<Map<String, dynamic>> filteredRecommendations = [];
+      
+      switch (level) {
+        case 'low':
+          filteredRecommendations = allRecommendations.where((rec) => rec['priority'] == 'high').toList();
+          break;
+        case 'medium':
+          filteredRecommendations = allRecommendations.where((rec) => 
+            rec['priority'] == 'high' || rec['priority'] == 'medium').toList();
+          break;
+        case 'high':
+          filteredRecommendations = allRecommendations;
+          break;
+        default:
+          filteredRecommendations = allRecommendations.where((rec) => 
+            rec['priority'] == 'high' || rec['priority'] == 'medium').toList();
+      }
+      
       setState(() {
-        _aiRecommendations = [
-          {
-            'title': 'Optimisation de l\'irrigation',
-            'description': 'Réduire l\'arrosage de 15% cette semaine pour économiser l\'eau',
-            'priority': 'high',
-            'category': 'irrigation',
-            'impact': '+8% efficacité',
-            'icon': Icons.water_drop,
-          },
-          {
-            'title': 'Fertilisation recommandée',
-            'description': 'Appliquer de l\'engrais azoté sur les cultures de maïs',
-            'priority': 'medium',
-            'category': 'fertilization',
-            'impact': '+12% rendement',
-            'icon': Icons.eco,
-          },
-          {
-            'title': 'Rotation des cultures',
-            'description': 'Planifier la rotation avec des légumineuses pour enrichir le sol',
-            'priority': 'low',
-            'category': 'planning',
-            'impact': '+5% qualité sol',
-            'icon': Icons.rotate_right,
-          },
-        ];
+        _aiRecommendations = filteredRecommendations;
       });
     } catch (e) {
       print('Erreur génération recommandations: $e');
@@ -153,44 +249,110 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
   }
 
   void _setupNotifications() {
-    // Simulation de notifications push
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        _showNotification('Nouvelle recommandation IA disponible', 'Vérifiez les suggestions d\'optimisation');
-      }
-    });
+    if (!_areNotificationsEnabled()) return;
     
-    Future.delayed(const Duration(seconds: 10), () {
+    // Simulation de notifications push selon les paramètres
+    if (_settings['notifications']['aiRecommendations'] == true) {
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          _showNotification('Nouvelle recommandation IA disponible', 'Vérifiez les suggestions d\'optimisation');
+        }
+      });
+    }
+    
+    if (_settings['notifications']['weatherAlerts'] == true) {
+      Future.delayed(const Duration(seconds: 10), () {
+        if (mounted) {
+          _showNotification('Alerte météo', 'Pluie prévue dans 2 jours - Préparez vos cultures');
+        }
+      });
+    }
+    
+    if (_settings['notifications']['cropReminders'] == true) {
+      Future.delayed(const Duration(seconds: 15), () {
+        if (mounted) {
+          _showNotification('Rappel Culture', 'Il est temps de vérifier l\'état de vos cultures de maïs');
+        }
+      });
+    }
+  }
+
+  void _setupAutoRefresh() {
+    if (!(_settings['data']['autoRefresh'] as bool)) return;
+    
+    final interval = _settings['data']['refreshInterval'] as int;
+    Timer.periodic(Duration(minutes: interval), (timer) {
       if (mounted) {
-        _showNotification('Alerte météo', 'Pluie prévue dans 2 jours - Préparez vos cultures');
+        _loadDashboardData();
+        if (_isWeatherEnabled()) {
+          _loadWeatherData();
+        }
+        if (_isAIEnabled()) {
+          _generateAIRecommendations();
+        }
+        
+        // Afficher une notification discrète
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Données actualisées automatiquement'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: Colors.green[600],
+          ),
+        );
+      } else {
+        timer.cancel();
       }
     });
   }
 
   void _showNotification(String title, String message) {
+    // Vérifier les paramètres de notification
+    final soundEnabled = _settings['notifications']['soundEnabled'] as bool;
+    final vibrationEnabled = _settings['notifications']['vibrationEnabled'] as bool;
+    
+    // Simuler les effets sonores et de vibration
+    if (soundEnabled) {
+      // Dans une vraie app, on jouerait un son
+      print('🔊 Son de notification joué');
+    }
+    
+    if (vibrationEnabled) {
+      // Dans une vraie app, on déclencherait la vibration
+      print('📳 Vibration activée');
+    }
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                if (soundEnabled) const Icon(Icons.volume_up, size: 16, color: Colors.white),
+                if (vibrationEnabled) const Icon(Icons.vibration, size: 16, color: Colors.white),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
             Text(message),
           ],
         ),
-        backgroundColor: Colors.blue[800],
+        backgroundColor: _getAccentColor(),
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
           label: 'Voir',
           textColor: Colors.white,
           onPressed: () {
-            // Naviguer vers la section des recommandations IA
+            // Naviguer vers la section appropriée
             if (title.contains('recommandation')) {
-              // Scroll vers la section des recommandations
               _scrollToSection('recommendations');
             } else if (title.contains('météo')) {
-              // Scroll vers la section météo
               _scrollToSection('weather');
+            } else if (title.contains('Culture')) {
+              _scrollToSection('crops');
             }
           },
         ),
@@ -203,7 +365,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tableau de Bord Intelligent'),
-        backgroundColor: _isDarkMode ? Colors.grey[900] : Colors.green[800],
+        backgroundColor: _getPrimaryColor(),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -220,6 +382,11 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
               const PopupMenuItem(value: '30d', child: Text('30 jours')),
               const PopupMenuItem(value: '90d', child: Text('3 mois')),
             ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _openSettings,
+            tooltip: 'Paramètres',
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -239,18 +406,26 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildWeatherSection(),
-                        const SizedBox(height: 20),
-                        _buildAIRecommendationsSection(),
-                        const SizedBox(height: 20),
+                        if (_settings['display']['showWeather'] == true) ...[
+                          _buildWeatherSection(),
+                          const SizedBox(height: 20),
+                        ],
+                        if (_settings['display']['showAIRecommendations'] == true) ...[
+                          _buildAIRecommendationsSection(),
+                          const SizedBox(height: 20),
+                        ],
                         _buildAlertsSection(),
                         const SizedBox(height: 20),
                         _buildSummaryCards(),
                         const SizedBox(height: 20),
+                        if (_settings['display']['showCharts'] == true) ...[
                         _buildChartsSection(),
                         const SizedBox(height: 20),
-                        _buildPerformanceMetricsSection(),
-                        const SizedBox(height: 20),
+                        ],
+                        if (_settings['display']['showPerformanceMetrics'] == true) ...[
+                          _buildPerformanceMetricsSection(),
+                          const SizedBox(height: 20),
+                        ],
                         _buildRecentCropsSection(),
                         const SizedBox(height: 20),
                         _buildQuickActionsSection(),
@@ -283,7 +458,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                 ),
                 const Spacer(),
                 Text(
-                  '${_weatherData!['temperature']}°C',
+                  _getTemperatureDisplay(_weatherData!['temperature']),
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.orange[700],
@@ -334,7 +509,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                         Text(forecast['icon'], style: const TextStyle(fontSize: 24)),
                         const SizedBox(height: 4),
                         Text(forecast['day'], style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        Text('${forecast['temp']}°C', style: const TextStyle(fontSize: 14)),
+                        Text(_getTemperatureDisplay(forecast['temp']), style: const TextStyle(fontSize: 14)),
                         Text(forecast['condition'], style: const TextStyle(fontSize: 10)),
                       ],
                     ),
@@ -1187,7 +1362,81 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
   void _toggleDarkMode() {
     setState(() {
       _isDarkMode = !_isDarkMode;
+      _settings['theme']['isDarkMode'] = _isDarkMode;
     });
+    _saveSettings();
+  }
+
+  void _openSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _SettingsScreen(
+          settings: _settings,
+          onSettingsChanged: (newSettings) {
+            setState(() {
+              _settings = newSettings;
+              _isDarkMode = _settings['theme']['isDarkMode'] as bool;
+            });
+            _saveSettings();
+            _applySettings();
+          },
+        ),
+      ),
+    );
+  }
+
+  void _saveSettings() {
+    // Simuler la sauvegarde des paramètres
+    // Dans une vraie app, on utiliserait SharedPreferences ou une base de données
+    print('Paramètres sauvegardés: $_settings');
+  }
+
+  void _applySettings() {
+    // Appliquer les paramètres en temps réel
+    if (_settings['display']['showWeather'] == false) {
+      _weatherData = null;
+    } else {
+      _loadWeatherData();
+    }
+    
+    if (_settings['display']['showAIRecommendations'] == false) {
+      _aiRecommendations.clear();
+    } else {
+      _generateAIRecommendations();
+    }
+    
+    // Appliquer les paramètres de thème
+    _applyThemeSettings();
+    
+    // Appliquer les paramètres de performance
+    _applyPerformanceSettings();
+    
+    // Recharger les données si nécessaire
+    if (_settings['data']['autoRefresh'] == true) {
+      _loadDashboardData();
+    }
+  }
+
+  void _applyThemeSettings() {
+    // Appliquer les couleurs du thème
+    // Les couleurs seront appliquées lors du prochain rebuild
+    setState(() {
+      // Force le rebuild pour appliquer les nouvelles couleurs
+    });
+  }
+
+  void _applyPerformanceSettings() {
+    // Appliquer les paramètres de performance
+    final animationsEnabled = _settings['display']['animationsEnabled'] as bool;
+    
+    if (!animationsEnabled) {
+      _animationController.stop();
+    } else {
+      _animationController.forward();
+    }
+    
+    // Le mode compact sera appliqué dans les widgets
   }
 
   void _onTimeRangeSelected(String timeRange) {
@@ -1337,6 +1586,59 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
         duration: const Duration(seconds: 1),
       ),
     );
+  }
+
+  // Méthodes utilitaires pour les paramètres
+  Color _getPrimaryColor() {
+    final colorName = _settings['theme']['primaryColor'] as String;
+    return _getColorFromName(colorName);
+  }
+
+  Color _getAccentColor() {
+    final colorName = _settings['theme']['accentColor'] as String;
+    return _getColorFromName(colorName);
+  }
+
+  Color _getColorFromName(String colorName) {
+    switch (colorName) {
+      case 'green': return Colors.green[800]!;
+      case 'blue': return Colors.blue[800]!;
+      case 'red': return Colors.red[800]!;
+      case 'purple': return Colors.purple[800]!;
+      case 'orange': return Colors.orange[800]!;
+      case 'teal': return Colors.teal[800]!;
+      default: return Colors.green[800]!;
+    }
+  }
+
+  String _getTemperatureUnit() {
+    return _settings['weather']['unit'] as String;
+  }
+
+  String _getRecommendationLevel() {
+    return _settings['ai']['recommendationLevel'] as String;
+  }
+
+  bool _isAIEnabled() {
+    return _settings['ai']['enabled'] as bool;
+  }
+
+  bool _isWeatherEnabled() {
+    return _settings['display']['showWeather'] as bool;
+  }
+
+  bool _areNotificationsEnabled() {
+    return _settings['notifications']['enabled'] as bool;
+  }
+
+  String _getTemperatureDisplay(double celsius) {
+    final unit = _getTemperatureUnit();
+    if (unit == 'fahrenheit') {
+      final fahrenheit = (celsius * 9/5) + 32;
+      return '${fahrenheit.toStringAsFixed(1)}°F';
+    } else {
+      return '${celsius.toStringAsFixed(1)}°C';
+    }
   }
 
   void _showSearchDialog() {
@@ -1950,5 +2252,763 @@ class _ReportsScreen extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+class _SettingsScreen extends StatefulWidget {
+  final Map<String, dynamic> settings;
+  final Function(Map<String, dynamic>) onSettingsChanged;
+
+  const _SettingsScreen({
+    required this.settings,
+    required this.onSettingsChanged,
+  });
+
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<_SettingsScreen> {
+  late Map<String, dynamic> _currentSettings;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentSettings = Map.from(widget.settings);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Paramètres'),
+        backgroundColor: Colors.blue[800],
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _saveSettings,
+            tooltip: 'Sauvegarder',
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          _buildThemeSection(),
+          _buildDisplaySection(),
+          _buildNotificationSection(),
+          _buildDataSection(),
+          _buildWeatherSection(),
+          _buildAISection(),
+          _buildAdvancedSection(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThemeSection() {
+    return _buildSectionCard(
+      title: 'Thème et Apparence',
+      icon: Icons.palette,
+      children: [
+        SwitchListTile(
+          title: const Text('Mode Sombre'),
+          subtitle: const Text('Activer le thème sombre'),
+          value: _currentSettings['theme']['isDarkMode'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['theme']['isDarkMode'] = value;
+            });
+          },
+        ),
+        ListTile(
+          title: const Text('Couleur Principale'),
+          subtitle: Text(_currentSettings['theme']['primaryColor']),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showColorPicker('primaryColor'),
+        ),
+        ListTile(
+          title: const Text('Couleur d\'Accent'),
+          subtitle: Text(_currentSettings['theme']['accentColor']),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showColorPicker('accentColor'),
+        ),
+        ListTile(
+          title: const Text('Taille de Police'),
+          subtitle: Text(_currentSettings['theme']['fontSize']),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showFontSizePicker(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDisplaySection() {
+    return _buildSectionCard(
+      title: 'Affichage',
+      icon: Icons.visibility,
+      children: [
+        SwitchListTile(
+          title: const Text('Section Météo'),
+          subtitle: const Text('Afficher les informations météo'),
+          value: _currentSettings['display']['showWeather'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['showWeather'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Recommandations IA'),
+          subtitle: const Text('Afficher les suggestions IA'),
+          value: _currentSettings['display']['showAIRecommendations'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['showAIRecommendations'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Métriques de Performance'),
+          subtitle: const Text('Afficher les indicateurs de performance'),
+          value: _currentSettings['display']['showPerformanceMetrics'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['showPerformanceMetrics'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Graphiques'),
+          subtitle: const Text('Afficher les graphiques et analyses'),
+          value: _currentSettings['display']['showCharts'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['showCharts'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Mode Compact'),
+          subtitle: const Text('Interface plus dense'),
+          value: _currentSettings['display']['compactMode'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['compactMode'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Animations'),
+          subtitle: const Text('Activer les animations'),
+          value: _currentSettings['display']['animationsEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['animationsEnabled'] = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationSection() {
+    return _buildSectionCard(
+      title: 'Notifications',
+      icon: Icons.notifications,
+      children: [
+        SwitchListTile(
+          title: const Text('Notifications Actives'),
+          subtitle: const Text('Activer toutes les notifications'),
+          value: _currentSettings['notifications']['enabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['enabled'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Alertes Météo'),
+          subtitle: const Text('Notifications météorologiques'),
+          value: _currentSettings['notifications']['weatherAlerts'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['weatherAlerts'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Recommandations IA'),
+          subtitle: const Text('Notifications des suggestions IA'),
+          value: _currentSettings['notifications']['aiRecommendations'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['aiRecommendations'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Rappels Cultures'),
+          subtitle: const Text('Rappels pour les cultures'),
+          value: _currentSettings['notifications']['cropReminders'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['cropReminders'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Son'),
+          subtitle: const Text('Activer les sons de notification'),
+          value: _currentSettings['notifications']['soundEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['soundEnabled'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Vibration'),
+          subtitle: const Text('Activer la vibration'),
+          value: _currentSettings['notifications']['vibrationEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['notifications']['vibrationEnabled'] = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDataSection() {
+    return _buildSectionCard(
+      title: 'Données et Synchronisation',
+      icon: Icons.storage,
+      children: [
+        SwitchListTile(
+          title: const Text('Actualisation Automatique'),
+          subtitle: const Text('Actualiser les données automatiquement'),
+          value: _currentSettings['data']['autoRefresh'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['data']['autoRefresh'] = value;
+            });
+          },
+        ),
+        ListTile(
+          title: const Text('Intervalle d\'Actualisation'),
+          subtitle: Text('${_currentSettings['data']['refreshInterval']} minutes'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showRefreshIntervalPicker(),
+        ),
+        SwitchListTile(
+          title: const Text('Cache Local'),
+          subtitle: const Text('Utiliser le cache pour améliorer les performances'),
+          value: _currentSettings['data']['cacheEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['data']['cacheEnabled'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Synchronisation'),
+          subtitle: const Text('Synchroniser avec le cloud'),
+          value: _currentSettings['data']['syncEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['data']['syncEnabled'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Sauvegarde Automatique'),
+          subtitle: const Text('Sauvegarder automatiquement les données'),
+          value: _currentSettings['data']['backupEnabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['data']['backupEnabled'] = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeatherSection() {
+    return _buildSectionCard(
+      title: 'Météo et Localisation',
+      icon: Icons.wb_sunny,
+      children: [
+        ListTile(
+          title: const Text('Localisation'),
+          subtitle: Text(_currentSettings['weather']['location']),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showLocationPicker(),
+        ),
+        ListTile(
+          title: const Text('Unité de Température'),
+          subtitle: Text(_currentSettings['weather']['unit'] == 'celsius' ? 'Celsius' : 'Fahrenheit'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showTemperatureUnitPicker(),
+        ),
+        ListTile(
+          title: const Text('Jours de Prévision'),
+          subtitle: Text('${_currentSettings['weather']['forecastDays']} jours'),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showForecastDaysPicker(),
+        ),
+        SwitchListTile(
+          title: const Text('Localisation Automatique'),
+          subtitle: const Text('Détecter automatiquement la position'),
+          value: _currentSettings['weather']['autoLocation'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['weather']['autoLocation'] = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAISection() {
+    return _buildSectionCard(
+      title: 'Intelligence Artificielle',
+      icon: Icons.psychology,
+      children: [
+        SwitchListTile(
+          title: const Text('IA Activée'),
+          subtitle: const Text('Activer les fonctionnalités IA'),
+          value: _currentSettings['ai']['enabled'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['ai']['enabled'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
+          title: const Text('Mode Apprentissage'),
+          subtitle: const Text('L\'IA apprend de vos préférences'),
+          value: _currentSettings['ai']['learningMode'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['ai']['learningMode'] = value;
+            });
+          },
+        ),
+        ListTile(
+          title: const Text('Niveau de Recommandations'),
+          subtitle: Text(_getRecommendationLevelText(_currentSettings['ai']['recommendationLevel'])),
+          trailing: const Icon(Icons.arrow_forward_ios),
+          onTap: () => _showRecommendationLevelPicker(),
+        ),
+        SwitchListTile(
+          title: const Text('Optimisation Automatique'),
+          subtitle: const Text('Optimiser automatiquement les paramètres'),
+          value: _currentSettings['ai']['autoOptimization'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['ai']['autoOptimization'] = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdvancedSection() {
+    return _buildSectionCard(
+      title: 'Paramètres Avancés',
+      icon: Icons.settings_applications,
+      children: [
+        ListTile(
+          title: const Text('Réinitialiser les Paramètres'),
+          subtitle: const Text('Restaurer les paramètres par défaut'),
+          trailing: const Icon(Icons.restore),
+          onTap: _resetSettings,
+        ),
+        ListTile(
+          title: const Text('Exporter les Paramètres'),
+          subtitle: const Text('Sauvegarder la configuration'),
+          trailing: const Icon(Icons.download),
+          onTap: _exportSettings,
+        ),
+        ListTile(
+          title: const Text('Importer les Paramètres'),
+          subtitle: const Text('Charger une configuration'),
+          trailing: const Icon(Icons.upload),
+          onTap: _importSettings,
+        ),
+        ListTile(
+          title: const Text('À Propos'),
+          subtitle: const Text('Version et informations'),
+          trailing: const Icon(Icons.info),
+          onTap: _showAbout,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionCard({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    return Card(
+      margin: const EdgeInsets.all(8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Icon(icon, color: Colors.blue[700]),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  void _saveSettings() {
+    widget.onSettingsChanged(_currentSettings);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Paramètres sauvegardés avec succès!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    Navigator.pop(context);
+  }
+
+  void _showColorPicker(String colorType) {
+    final colors = ['green', 'blue', 'red', 'purple', 'orange', 'teal'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Choisir la couleur ${colorType == 'primaryColor' ? 'principale' : 'd\'accent'}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: colors.map((color) => ListTile(
+            title: Text(color.toUpperCase()),
+            leading: CircleAvatar(backgroundColor: _getColorFromName(color)),
+            onTap: () {
+              setState(() {
+                _currentSettings['theme'][colorType] = color;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showFontSizePicker() {
+    final sizes = ['small', 'medium', 'large'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Taille de Police'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: sizes.map((size) => ListTile(
+            title: Text(_getFontSizeText(size)),
+            onTap: () {
+              setState(() {
+                _currentSettings['theme']['fontSize'] = size;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showRefreshIntervalPicker() {
+    final intervals = [5, 15, 30, 60, 120];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Intervalle d\'Actualisation'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: intervals.map((interval) => ListTile(
+            title: Text('$interval minutes'),
+            onTap: () {
+              setState(() {
+                _currentSettings['data']['refreshInterval'] = interval;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showLocationPicker() {
+    final locations = ['Dakar', 'Thiès', 'Kaolack', 'Saint-Louis', 'Ziguinchor', 'Kolda'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Localisation'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: locations.map((location) => ListTile(
+            title: Text(location),
+            onTap: () {
+              setState(() {
+                _currentSettings['weather']['location'] = location;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showTemperatureUnitPicker() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unité de Température'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: const Text('Celsius (°C)'),
+              onTap: () {
+                setState(() {
+                  _currentSettings['weather']['unit'] = 'celsius';
+                });
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              title: const Text('Fahrenheit (°F)'),
+              onTap: () {
+                setState(() {
+                  _currentSettings['weather']['unit'] = 'fahrenheit';
+                });
+                Navigator.pop(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showForecastDaysPicker() {
+    final days = [1, 3, 5, 7];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Jours de Prévision'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: days.map((day) => ListTile(
+            title: Text('$day jour${day > 1 ? 's' : ''}'),
+            onTap: () {
+              setState(() {
+                _currentSettings['weather']['forecastDays'] = day;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showRecommendationLevelPicker() {
+    final levels = ['low', 'medium', 'high'];
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Niveau de Recommandations'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: levels.map((level) => ListTile(
+            title: Text(_getRecommendationLevelText(level)),
+            onTap: () {
+              setState(() {
+                _currentSettings['ai']['recommendationLevel'] = level;
+              });
+              Navigator.pop(context);
+            },
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _resetSettings() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Réinitialiser les Paramètres'),
+        content: const Text('Êtes-vous sûr de vouloir restaurer les paramètres par défaut ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _currentSettings = {
+                  'theme': {
+                    'isDarkMode': false,
+                    'primaryColor': 'green',
+                    'accentColor': 'blue',
+                    'fontSize': 'medium',
+                  },
+                  'notifications': {
+                    'enabled': true,
+                    'weatherAlerts': true,
+                    'aiRecommendations': true,
+                    'cropReminders': true,
+                    'soundEnabled': true,
+                    'vibrationEnabled': true,
+                  },
+                  'display': {
+                    'showWeather': true,
+                    'showAIRecommendations': true,
+                    'showPerformanceMetrics': true,
+                    'showCharts': true,
+                    'compactMode': false,
+                    'animationsEnabled': true,
+                  },
+                  'data': {
+                    'autoRefresh': true,
+                    'refreshInterval': 30,
+                    'cacheEnabled': true,
+                    'syncEnabled': true,
+                    'backupEnabled': true,
+                  },
+                  'weather': {
+                    'location': 'Dakar',
+                    'unit': 'celsius',
+                    'forecastDays': 3,
+                    'autoLocation': true,
+                  },
+                  'ai': {
+                    'enabled': true,
+                    'learningMode': true,
+                    'recommendationLevel': 'medium',
+                    'autoOptimization': true,
+                  },
+                };
+              });
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Paramètres réinitialisés!'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            },
+            child: const Text('Réinitialiser'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _exportSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Export des paramètres en cours...'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _importSettings() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Import des paramètres en cours...'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _showAbout() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('À Propos'),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Tableau de Bord Agricole Intelligent'),
+            SizedBox(height: 8),
+            Text('Version: 2.0.0'),
+            Text('Développé avec Flutter'),
+            SizedBox(height: 16),
+            Text('Fonctionnalités:'),
+            Text('• Gestion des cultures'),
+            Text('• Météo en temps réel'),
+            Text('• Recommandations IA'),
+            Text('• Analyses avancées'),
+            Text('• Paramètres personnalisables'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getColorFromName(String colorName) {
+    switch (colorName) {
+      case 'green': return Colors.green;
+      case 'blue': return Colors.blue;
+      case 'red': return Colors.red;
+      case 'purple': return Colors.purple;
+      case 'orange': return Colors.orange;
+      case 'teal': return Colors.teal;
+      default: return Colors.grey;
+    }
+  }
+
+  String _getFontSizeText(String size) {
+    switch (size) {
+      case 'small': return 'Petit';
+      case 'medium': return 'Moyen';
+      case 'large': return 'Grand';
+      default: return 'Moyen';
+    }
+  }
+
+  String _getRecommendationLevelText(String level) {
+    switch (level) {
+      case 'low': return 'Faible (moins de suggestions)';
+      case 'medium': return 'Moyen (équilibré)';
+      case 'high': return 'Élevé (beaucoup de suggestions)';
+      default: return 'Moyen';
+    }
   }
 }
