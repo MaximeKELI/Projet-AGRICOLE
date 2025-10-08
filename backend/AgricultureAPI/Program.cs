@@ -77,14 +77,11 @@ using (var scope = app.Services.CreateScope())
         await seeder.SeedDataAsync();
     }
     
-    // Seed documents if they don't exist
+    // Seed documents if they don't exist or update prices
     try
     {
-        if (!context.DocumentRecommendations.Any())
-        {
-            var documentSeeder = scope.ServiceProvider.GetRequiredService<IDocumentService>();
-            await documentSeeder.SeedDocumentsAsync();
-        }
+        var documentSeeder = scope.ServiceProvider.GetRequiredService<IDocumentService>();
+        await documentSeeder.SeedDocumentsAsync();
     }
     catch (Exception ex)
     {

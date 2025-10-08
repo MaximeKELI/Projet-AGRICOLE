@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../services/document_service.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class DocumentsScreen extends StatefulWidget {
   const DocumentsScreen({Key? key}) : super(key: key);
@@ -41,9 +41,10 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = e.toString();
+        _errorMessage = 'Erreur de connexion au serveur. Vérifiez que le backend est démarré sur http://localhost:5000';
         _isLoading = false;
       });
+      print('Erreur lors du chargement des documents: $e');
     }
   }
 
@@ -144,7 +145,8 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
         }
       }
     } catch (e) {
-      _showErrorDialog('Erreur: $e');
+      _showErrorDialog('Erreur lors du téléchargement: $e');
+      print('Erreur de téléchargement: $e');
     }
   }
 
@@ -187,9 +189,12 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                // Copier le chemin dans le presse-papiers serait idéal
+                // Copier le chemin dans le presse-papiers
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Chemin copié : $filePath')),
+                  SnackBar(
+                    content: Text('Chemin copié : $filePath'),
+                    duration: Duration(seconds: 3),
+                  ),
                 );
               },
               child: Text('Copier le chemin'),
@@ -300,6 +305,9 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                                 Icon(Icons.description_outlined, size: 64, color: Colors.grey),
                                 SizedBox(height: 16),
                                 Text('Aucun document trouvé', style: TextStyle(color: Colors.grey)),
+                                SizedBox(height: 8),
+                                Text('Ajustez les filtres pour voir plus de documents', 
+                                     style: TextStyle(color: Colors.grey[600], fontSize: 12)),
                               ],
                             ),
                           )
@@ -457,9 +465,15 @@ class PDFViewerScreen extends StatelessWidget {
         pageFling: false,
         onError: (error) {
           print('Erreur PDF: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors de l\'affichage du PDF: $error')),
+          );
         },
         onPageError: (page, error) {
           print('Erreur page $page: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur page $page: $error')),
+          );
         },
       ),
     );

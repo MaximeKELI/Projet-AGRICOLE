@@ -56,7 +56,26 @@ namespace AgricultureAPI.Services
         {
             var existingDocs = await _documentRepository.GetAllAsync();
             if (existingDocs.Any())
+            {
+                // Mettre à jour les prix existants
+                foreach (var doc in existingDocs)
+                {
+                    switch (doc.Id)
+                    {
+                        case "doc_tchamba":
+                            doc.Price = 5000;
+                            break;
+                        case "doc_blitta":
+                            doc.Price = 3500;
+                            break;
+                        case "doc_mo":
+                            doc.Price = 4000;
+                            break;
+                    }
+                    await _documentRepository.UpdateAsync(doc);
+                }
                 return;
+            }
 
             var documents = new List<DocumentRecommendation>
             {
@@ -66,7 +85,7 @@ namespace AgricultureAPI.Services
                     Title = "Recommandations de cultures - Fiches Tchamba",
                     Description = "Guide complet des recommandations de cultures pour la région de Tchamba avec techniques agricoles adaptées au climat local.",
                     FilePath = "lib/Fiche_de_documentation/Recommendation de cultures de fiches-tchamba.pdf",
-                    Price = 2500, // 2500 FCFA
+                    Price = 5000, // 5000 FCFA - Prix réaliste pour document technique complet
                     Category = "culture",
                     Prefecture = "Tchamba",
                     Region = "Centrale",
@@ -82,7 +101,7 @@ namespace AgricultureAPI.Services
                     Title = "Guide agricole - Blitta",
                     Description = "Documentation technique pour l'agriculture dans la région de Blitta, incluant les meilleures pratiques et calendriers de plantation.",
                     FilePath = "lib/Fiche_de_documentation/blitta.pdf",
-                    Price = 2000, // 2000 FCFA
+                    Price = 3500, // 3500 FCFA - Prix réaliste pour guide technique
                     Category = "technique",
                     Prefecture = "Blitta",
                     Region = "Centrale",
@@ -98,7 +117,7 @@ namespace AgricultureAPI.Services
                     Title = "Recommandations de culture - Préfecture de Mô",
                     Description = "Fiche technique détaillée pour les cultures adaptées à la préfecture de Mô avec conseils pratiques et recommandations saisonnières.",
                     FilePath = "lib/Fiche_de_documentation/recommendation de culture de la prefecture de mo.pdf",
-                    Price = 2200, // 2200 FCFA
+                    Price = 4000, // 4000 FCFA - Prix réaliste pour fiche technique détaillée
                     Category = "culture",
                     Prefecture = "Mô",
                     Region = "Plateaux",

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:provider/provider.dart';
@@ -6,13 +5,13 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:app_agrigeo/screens/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:app_agrigeo/screens/chatbot_screen.dart';
-import 'package:app_agrigeo/screens/weather_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
-import 'package:app_agrigeo/screens/dashboard_screen.dart';
 import 'package:app_agrigeo/screens/community_screen.dart';
-import 'package:app_agrigeo/screens/irrigation_screen.dart';
 import 'package:app_agrigeo/screens/ai_analysis_screen.dart';
+import 'package:app_agrigeo/screens/connected_weather_screen.dart';
+import 'package:app_agrigeo/screens/intelligent_dashboard_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -26,8 +25,8 @@ class _HomeScreenState extends State<HomeScreen>
   // Écrans disponibles dans l'ordre demandé
   late final List<Widget> _screens;
   final List<String> _screenTitles = [
-    'Tableau de bord',
-    'Météo',
+    'Tableau de bord intelligent',
+    'Station météo connectée',
     'Analyse IA',
     'Chatbot IA',
     'Communauté',
@@ -64,8 +63,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _initScreens() {
     _screens = [
-      DashboardScreen(),
-      WeatherScreen(),
+      IntelligentDashboardScreen(),
+      ConnectedWeatherScreen(),
       AIAnalysisScreen(),
       ChatbotScreen(),
       CommunityScreen(),
@@ -235,8 +234,8 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           _buildDrawerHeader(user),
           // Première partie du menu dans l'ordre demandé
-          _buildDrawerItem(0, Icons.dashboard, 'Tableau de bord'),
-          _buildDrawerItem(1, Icons.cloud, 'Météo'),
+          _buildDrawerItem(0, Icons.dashboard, 'Tableau de bord intelligent'),
+          _buildDrawerItem(1, Icons.cloud, 'Station météo connectée'),
           //_buildDrawerItem(2, Icons.water, 'Irrigation'),
           _buildDrawerItem(2, Icons.analytics, 'Analyse IA'),
           _buildDrawerItem(3, Icons.chat, 'Chatbot IA'),

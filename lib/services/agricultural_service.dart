@@ -1,523 +1,287 @@
-import '../models/agricultural_data.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/agricultural_metrics.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AgriculturalService {
-  static final AgriculturalService _instance = AgriculturalService._internal();
-  factory AgriculturalService() => _instance;
-  AgriculturalService._internal() {
-    _initializeData();
+  static const String _baseUrl = 'http://localhost:5000/api';
+  static const String _metricsKey = 'agricultural_metrics';
+
+  // Sauvegarder les métriques localement
+  Future<void> _saveMetricsLocally(List<AgriculturalMetrics> metrics) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final metricsJson = metrics.map((m) => m.toJson()).toList();
+      await prefs.setString(_metricsKey, jsonEncode(metricsJson));
+    } catch (e) {
+      print('Erreur lors de la sauvegarde locale: $e');
+    }
   }
 
-  // Données du Togo - Régions, Préfectures et Communes
-  late final List<Region> _togoRegions;
-
-  void _initializeData() {
-    _togoRegions = [
-      Region(
-        id: 'maritime',
-        name: 'Région Maritime',
-        prefectures: [
-          Prefecture(
-            id: 'golfe',
-            name: 'Golfe',
-            regionId: 'maritime',
-            communes: [
-              Commune(
-                id: 'lome',
-                name: 'Lomé',
-                prefectureId: 'golfe',
-                latitude: 6.1319,
-                longitude: 1.2228,
-                soilType: _getSoilType('ferralitique'),
-              ),
-              Commune(
-                id: 'aneho',
-                name: 'Aného',
-                prefectureId: 'golfe',
-                latitude: 6.2333,
-                longitude: 1.5833,
-                soilType: _getSoilType('sableux'),
-              ),
-            ],
-          ),
-          Prefecture(
-            id: 'lacs',
-            name: 'Lacs',
-            regionId: 'maritime',
-            communes: [
-              Commune(
-                id: 'tsevie',
-                name: 'Tsévié',
-                prefectureId: 'lacs',
-                latitude: 6.4286,
-                longitude: 1.2134,
-                soilType: _getSoilType('argilo_sableux'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      Region(
-        id: 'plateaux',
-        name: 'Région des Plateaux',
-        prefectures: [
-          Prefecture(
-            id: 'kloto',
-            name: 'Kloto',
-            regionId: 'plateaux',
-            communes: [
-              Commune(
-                id: 'kpalime',
-                name: 'Kpalimé',
-                prefectureId: 'kloto',
-                latitude: 6.9000,
-                longitude: 0.6333,
-                soilType: _getSoilType('ferralitique'),
-              ),
-            ],
-          ),
-          Prefecture(
-            id: 'agou',
-            name: 'Agou',
-            regionId: 'plateaux',
-            communes: [
-              Commune(
-                id: 'agou',
-                name: 'Agou',
-                prefectureId: 'agou',
-                latitude: 6.8500,
-                longitude: 0.7833,
-                soilType: _getSoilType('volcanique'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      Region(
-        id: 'centrale',
-        name: 'Région Centrale',
-        prefectures: [
-          Prefecture(
-            id: 'tchaoudjo',
-            name: 'Tchaoudjo',
-            regionId: 'centrale',
-            communes: [
-              Commune(
-                id: 'sokode',
-                name: 'Sokodé',
-                prefectureId: 'tchaoudjo',
-                latitude: 8.9833,
-                longitude: 1.1333,
-                soilType: _getSoilType('tropical'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      Region(
-        id: 'kara',
-        name: 'Région de la Kara',
-        prefectures: [
-          Prefecture(
-            id: 'kozah',
-            name: 'Kozah',
-            regionId: 'kara',
-            communes: [
-              Commune(
-                id: 'kara',
-                name: 'Kara',
-                prefectureId: 'kozah',
-                latitude: 9.5511,
-                longitude: 1.1864,
-                soilType: _getSoilType('lateritique'),
-              ),
-            ],
-          ),
-        ],
-      ),
-      Region(
-        id: 'savanes',
-        name: 'Région des Savanes',
-        prefectures: [
-          Prefecture(
-            id: 'tandjoare',
-            name: 'Tandjoareé',
-            regionId: 'savanes',
-            communes: [
-              Commune(
-                id: 'dapaong',
-                name: 'Dapaong',
-                prefectureId: 'tandjoare',
-                latitude: 10.8667,
-                longitude: 0.2167,
-                soilType: _getSoilType('soudanien'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ];
-  }
-
-  // Types de sols du Togo
-  final Map<String, SoilType> _soilTypes = {
-    'ferralitique': SoilType(
-      id: 'ferralitique',
-      name: 'Sol Ferralitique',
-      description: 'Sol rouge riche en fer et aluminium',
-      characteristics: 'Bonne structure, bien drainé, acide',
-      ph: 5.5,
-      texture: 'Argilo-sableuse',
-      drainage: 'Bon',
-      suitableCrops: ['cacao', 'cafe', 'palmier_huile', 'manioc', 'igname'],
-    ),
-    'sableux': SoilType(
-      id: 'sableux',
-      name: 'Sol Sableux',
-      description: 'Sol à dominante sableuse, bien drainé',
-      characteristics: 'Drainage rapide, faible rétention d\'eau',
-      ph: 6.0,
-      texture: 'Sableuse',
-      drainage: 'Très bon',
-      suitableCrops: ['arachide', 'niebe', 'mil', 'sorgho', 'pastèque'],
-    ),
-    'argilo_sableux': SoilType(
-      id: 'argilo_sableux',
-      name: 'Sol Argilo-Sableux',
-      description: 'Sol équilibré entre argile et sable',
-      characteristics: 'Bonne rétention d\'eau et de nutriments',
-      ph: 6.5,
-      texture: 'Argilo-sableuse',
-      drainage: 'Moyen',
-      suitableCrops: ['maïs', 'riz', 'tomate', 'gombo', 'haricot'],
-    ),
-    'volcanique': SoilType(
-      id: 'volcanique',
-      name: 'Sol Volcanique',
-      description: 'Sol d\'origine volcanique très fertile',
-      characteristics: 'Très fertile, riche en minéraux',
-      ph: 6.8,
-      texture: 'Limoneuse',
-      drainage: 'Bon',
-      suitableCrops: ['cafe', 'banane', 'avocat', 'légumes', 'fleurs'],
-    ),
-    'tropical': SoilType(
-      id: 'tropical',
-      name: 'Sol Tropical',
-      description: 'Sol typique des zones tropicales',
-      characteristics: 'Modérément fertile, lessivé',
-      ph: 6.0,
-      texture: 'Sablo-argileuse',
-      drainage: 'Moyen',
-      suitableCrops: ['coton', 'soja', 'sésame', 'tournesol', 'mil'],
-    ),
-    'lateritique': SoilType(
-      id: 'lateritique',
-      name: 'Sol Latéritique',
-      description: 'Sol rouge à cuirasse latéritique',
-      characteristics: 'Dur en saison sèche, compact',
-      ph: 5.8,
-      texture: 'Argileuse',
-      drainage: 'Faible',
-      suitableCrops: ['sorgho', 'mil', 'arachide', 'niebe', 'sésame'],
-    ),
-    'soudanien': SoilType(
-      id: 'soudanien',
-      name: 'Sol Soudanien',
-      description: 'Sol des zones soudaniennes',
-      characteristics: 'Pauvre en matière organique',
-      ph: 6.2,
-      texture: 'Sablo-limoneuse',
-      drainage: 'Bon',
-      suitableCrops: ['mil', 'sorgho', 'arachide', 'niebe', 'sésame'],
-    ),
-  };
-
-  // Cultures disponibles
-  final Map<String, Crop> _crops = {
-    'maïs': Crop(
-      id: 'maïs',
-      name: 'Maïs',
-      description: 'Céréale de base très nutritive',
-      suitableSoilTypes: ['argilo_sableux', 'tropical', 'volcanique'],
-      growthDurationDays: 120,
-      plantingSeason: 'Avril-Juin',
-      technicalItinerary: TechnicalItinerary(
-        cropId: 'maïs',
-        activities: [
-          CropActivity(
-            id: 'prep_terrain',
-            name: 'Préparation du terrain',
-            description: 'Labour et hersage du terrain',
-            dayFromPlanting: -15,
-            category: 'preparation',
-          ),
-          CropActivity(
-            id: 'semis',
-            name: 'Semis',
-            description: 'Plantation des graines de maïs',
-            dayFromPlanting: 0,
-            category: 'planting',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'sarclage1',
-            name: 'Premier sarclage',
-            description: 'Désherbage et buttage',
-            dayFromPlanting: 21,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'fertilisation',
-            name: 'Fertilisation',
-            description: 'Application d\'engrais NPK',
-            dayFromPlanting: 30,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'sarclage2',
-            name: 'Deuxième sarclage',
-            description: 'Désherbage et buttage',
-            dayFromPlanting: 45,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'recolte',
-            name: 'Récolte',
-            description: 'Récolte des épis de maïs',
-            dayFromPlanting: 120,
-            category: 'harvest',
-            isReminder: true,
-          ),
-        ],
-        plantingSchedule: PlantingSchedule(
-          cropId: 'maïs',
-          optimalStartDate: DateTime(2024, 4, 15),
-          optimalEndDate: DateTime(2024, 6, 30),
-          climateConsiderations: 'Éviter les périodes de forte pluie pour le semis',
-        ),
-      ),
-    ),
-    'riz': Crop(
-      id: 'riz',
-      name: 'Riz',
-      description: 'Céréale cultivée en zone humide',
-      suitableSoilTypes: ['argilo_sableux', 'tropical'],
-      growthDurationDays: 140,
-      plantingSeason: 'Mai-Juillet',
-      technicalItinerary: TechnicalItinerary(
-        cropId: 'riz',
-        activities: [
-          CropActivity(
-            id: 'prep_pepiniere',
-            name: 'Préparation pépinière',
-            description: 'Préparation des pépinières de riz',
-            dayFromPlanting: -30,
-            category: 'preparation',
-          ),
-          CropActivity(
-            id: 'semis_pepiniere',
-            name: 'Semis en pépinière',
-            description: 'Semis des graines en pépinière',
-            dayFromPlanting: -25,
-            category: 'planting',
-          ),
-          CropActivity(
-            id: 'prep_riziere',
-            name: 'Préparation rizière',
-            description: 'Labour et mise en eau de la rizière',
-            dayFromPlanting: -7,
-            category: 'preparation',
-          ),
-          CropActivity(
-            id: 'repiquage',
-            name: 'Repiquage',
-            description: 'Transplantation des plants de riz',
-            dayFromPlanting: 0,
-            category: 'planting',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'desherbage1',
-            name: 'Premier désherbage',
-            description: 'Élimination des mauvaises herbes',
-            dayFromPlanting: 20,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'fertilisation',
-            name: 'Fertilisation',
-            description: 'Application d\'engrais urée',
-            dayFromPlanting: 35,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'desherbage2',
-            name: 'Deuxième désherbage',
-            description: 'Désherbage et entretien',
-            dayFromPlanting: 50,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'recolte',
-            name: 'Récolte',
-            description: 'Récolte du riz',
-            dayFromPlanting: 140,
-            category: 'harvest',
-            isReminder: true,
-          ),
-        ],
-        plantingSchedule: PlantingSchedule(
-          cropId: 'riz',
-          optimalStartDate: DateTime(2024, 5, 1),
-          optimalEndDate: DateTime(2024, 7, 31),
-          climateConsiderations: 'Nécessite une bonne disponibilité en eau',
-        ),
-      ),
-    ),
-    'arachide': Crop(
-      id: 'arachide',
-      name: 'Arachide',
-      description: 'Légumineuse oléagineuse',
-      suitableSoilTypes: ['sableux', 'lateritique', 'soudanien'],
-      growthDurationDays: 110,
-      plantingSeason: 'Mai-Juin',
-      technicalItinerary: TechnicalItinerary(
-        cropId: 'arachide',
-        activities: [
-          CropActivity(
-            id: 'prep_terrain',
-            name: 'Préparation du terrain',
-            description: 'Labour léger du terrain',
-            dayFromPlanting: -10,
-            category: 'preparation',
-          ),
-          CropActivity(
-            id: 'semis',
-            name: 'Semis',
-            description: 'Plantation des graines d\'arachide',
-            dayFromPlanting: 0,
-            category: 'planting',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'sarclage1',
-            name: 'Premier sarclage',
-            description: 'Désherbage léger',
-            dayFromPlanting: 25,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'buttage',
-            name: 'Buttage',
-            description: 'Buttage des plants',
-            dayFromPlanting: 45,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'sarclage2',
-            name: 'Deuxième sarclage',
-            description: 'Désherbage et entretien',
-            dayFromPlanting: 65,
-            category: 'maintenance',
-            isReminder: true,
-          ),
-          CropActivity(
-            id: 'recolte',
-            name: 'Récolte',
-            description: 'Arrachage des plants d\'arachide',
-            dayFromPlanting: 110,
-            category: 'harvest',
-            isReminder: true,
-          ),
-        ],
-        plantingSchedule: PlantingSchedule(
-          cropId: 'arachide',
-          optimalStartDate: DateTime(2024, 5, 15),
-          optimalEndDate: DateTime(2024, 6, 30),
-          climateConsiderations: 'Éviter l\'excès d\'humidité',
-        ),
-      ),
-    ),
-  };
-
-  List<Region> getRegions() => _togoRegions;
-
-  List<Prefecture> getPrefectures(String regionId) {
-    final region = _togoRegions.firstWhere((r) => r.id == regionId);
-    return region.prefectures;
-  }
-
-  List<Commune> getCommunes(String prefectureId) {
-    for (final region in _togoRegions) {
-      for (final prefecture in region.prefectures) {
-        if (prefecture.id == prefectureId) {
-          return prefecture.communes;
-        }
+  // Charger les métriques depuis le stockage local
+  Future<List<AgriculturalMetrics>> _loadMetricsLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final metricsString = prefs.getString(_metricsKey);
+      if (metricsString != null) {
+        final List<dynamic> metricsJson = jsonDecode(metricsString);
+        return metricsJson.map((json) => AgriculturalMetrics.fromJson(json)).toList();
       }
+    } catch (e) {
+      print('Erreur lors du chargement local: $e');
     }
     return [];
   }
 
-  SoilType _getSoilType(String soilTypeId) {
-    return _soilTypes[soilTypeId]!;
+  // Obtenir toutes les métriques agricoles
+  Future<List<AgriculturalMetrics>> getAgriculturalMetrics(String userId) async {
+    try {
+      // Essayer d'abord l'API
+      final response = await http.get(
+        Uri.parse('$_baseUrl/agricultural-metrics/user/$userId'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final metrics = data.map((json) => AgriculturalMetrics.fromJson(json)).toList();
+        await _saveMetricsLocally(metrics);
+        return metrics;
+      }
+    } catch (e) {
+      print('Erreur API, utilisation des données locales: $e');
+    }
+
+    // Fallback vers les données locales
+    return await _loadMetricsLocally();
   }
 
-  SoilType? getSoilTypeForCommune(String communeId) {
-    for (final region in _togoRegions) {
-      for (final prefecture in region.prefectures) {
-        for (final commune in prefecture.communes) {
-          if (commune.id == communeId) {
-            return commune.soilType;
-          }
+  // Créer une nouvelle métrique agricole
+  Future<AgriculturalMetrics> createAgriculturalMetric(AgriculturalMetrics metric) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/agricultural-metrics'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(metric.toJson()),
+      );
+
+      if (response.statusCode == 201) {
+        final createdMetric = AgriculturalMetrics.fromJson(jsonDecode(response.body));
+        
+        // Mettre à jour le cache local
+        final localMetrics = await _loadMetricsLocally();
+        localMetrics.add(createdMetric);
+        await _saveMetricsLocally(localMetrics);
+        
+        return createdMetric;
+      }
+    } catch (e) {
+      print('Erreur lors de la création: $e');
+    }
+
+    // Fallback: créer localement
+    final localMetrics = await _loadMetricsLocally();
+    localMetrics.add(metric);
+    await _saveMetricsLocally(localMetrics);
+    return metric;
+  }
+
+  // Mettre à jour une métrique existante
+  Future<AgriculturalMetrics> updateAgriculturalMetric(AgriculturalMetrics metric) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$_baseUrl/agricultural-metrics/${metric.id}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(metric.toJson()),
+      );
+
+      if (response.statusCode == 200) {
+        final updatedMetric = AgriculturalMetrics.fromJson(jsonDecode(response.body));
+        
+        // Mettre à jour le cache local
+        final localMetrics = await _loadMetricsLocally();
+        final index = localMetrics.indexWhere((m) => m.id == metric.id);
+        if (index != -1) {
+          localMetrics[index] = updatedMetric;
+          await _saveMetricsLocally(localMetrics);
         }
+        
+        return updatedMetric;
+      }
+    } catch (e) {
+      print('Erreur lors de la mise à jour: $e');
+    }
+
+    // Fallback: mettre à jour localement
+    final localMetrics = await _loadMetricsLocally();
+    final index = localMetrics.indexWhere((m) => m.id == metric.id);
+    if (index != -1) {
+      localMetrics[index] = metric;
+      await _saveMetricsLocally(localMetrics);
+    }
+    return metric;
+  }
+
+  // Supprimer une métrique
+  Future<void> deleteAgriculturalMetric(String metricId) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$_baseUrl/agricultural-metrics/$metricId'),
+      );
+
+      if (response.statusCode == 200) {
+        // Mettre à jour le cache local
+        final localMetrics = await _loadMetricsLocally();
+        localMetrics.removeWhere((m) => m.id == metricId);
+        await _saveMetricsLocally(localMetrics);
+      }
+    } catch (e) {
+      print('Erreur lors de la suppression: $e');
+    }
+  }
+
+  // Obtenir le résumé du tableau de bord
+  Future<DashboardSummary> getDashboardSummary(String userId) async {
+    final metrics = await getAgriculturalMetrics(userId);
+    return DashboardSummary.fromMetrics(metrics);
+  }
+
+  // Obtenir les prédictions de rendement
+  Future<Map<String, dynamic>> getYieldPredictions(String cropType, String region) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/agricultural-metrics/predictions?cropType=$cropType&region=$region'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+    } catch (e) {
+      print('Erreur lors de la prédiction: $e');
+    }
+
+    // Fallback: prédiction basique
+    return _getBasicYieldPrediction(cropType, region);
+  }
+
+  Map<String, dynamic> _getBasicYieldPrediction(String cropType, String region) {
+    // Prédictions basiques basées sur les données moyennes du Togo
+    final baseYields = {
+      'maïs': 2.5, // tonnes/hectare
+      'riz': 3.0,
+      'arachide': 1.5,
+      'manioc': 15.0,
+      'igname': 8.0,
+      'tomate': 25.0,
+      'piment': 20.0,
+      'gombo': 15.0,
+    };
+
+    final baseYield = baseYields[cropType.toLowerCase()] ?? 2.0;
+    final seasonalFactor = _getSeasonalFactor();
+    final regionFactor = _getRegionFactor(region);
+
+    final predictedYield = baseYield * seasonalFactor * regionFactor;
+    final confidence = 0.75; // 75% de confiance
+
+    return {
+      'predictedYield': predictedYield,
+      'confidence': confidence,
+      'factors': {
+        'baseYield': baseYield,
+        'seasonalFactor': seasonalFactor,
+        'regionFactor': regionFactor,
+      },
+      'recommendations': _getYieldRecommendations(cropType, predictedYield),
+    };
+  }
+
+  double _getSeasonalFactor() {
+    final month = DateTime.now().month;
+    // Facteurs saisonniers pour le Togo
+    if (month >= 3 && month <= 6) return 1.2; // Grande saison des pluies
+    if (month >= 9 && month <= 11) return 1.1; // Petite saison des pluies
+    return 0.8; // Saison sèche
+  }
+
+  double _getRegionFactor(String region) {
+    // Facteurs régionaux basés sur la fertilité des sols
+    final regionFactors = {
+      'Maritime': 1.0,
+      'Plateaux': 1.1,
+      'Centrale': 1.2,
+      'Kara': 0.9,
+      'Savanes': 0.8,
+    };
+    return regionFactors[region] ?? 1.0;
+  }
+
+  List<String> _getYieldRecommendations(String cropType, double predictedYield) {
+    final recommendations = <String>[];
+
+    if (predictedYield < 2.0) {
+      recommendations.add('Fertilisation NPK recommandée');
+      recommendations.add('Vérifier la qualité des semences');
+      recommendations.add('Améliorer la préparation du sol');
+    }
+
+    if (cropType.toLowerCase() == 'maïs') {
+      recommendations.add('Espacement recommandé: 80cm x 40cm');
+      recommendations.add('Irrigation nécessaire pendant la floraison');
+    }
+
+    if (cropType.toLowerCase() == 'riz') {
+      recommendations.add('Niveau d\'eau: 5-10cm pendant la croissance');
+      recommendations.add('Drainage 2 semaines avant récolte');
+    }
+
+    return recommendations;
+  }
+
+  // Obtenir les alertes agricoles
+  Future<List<Map<String, dynamic>>> getAgriculturalAlerts(String userId) async {
+    final metrics = await getAgriculturalMetrics(userId);
+    final alerts = <Map<String, dynamic>>[];
+
+    for (final metric in metrics) {
+      // Alerte si le rendement est faible
+      if (metric.yieldEfficiency < 70) {
+        alerts.add({
+          'type': 'low_yield',
+          'severity': 'warning',
+          'title': 'Rendement faible détecté',
+          'message': 'Le rendement de ${metric.cropType} est ${metric.yieldEfficiency.toStringAsFixed(1)}% des attentes',
+          'cropId': metric.id,
+          'action': 'Vérifier la fertilisation et l\'irrigation',
+        });
+      }
+
+      // Alerte si la récolte est proche
+      if (metric.daysToHarvest <= 7 && metric.daysToHarvest > 0) {
+        alerts.add({
+          'type': 'harvest_ready',
+          'severity': 'info',
+          'title': 'Récolte prête',
+          'message': '${metric.cropType} sera prêt à récolter dans ${metric.daysToHarvest} jours',
+          'cropId': metric.id,
+          'action': 'Préparer la récolte',
+        });
+      }
+
+      // Alerte si les coûts sont élevés
+      if (metric.costPerHectare > 500000) { // 500,000 FCFA/hectare
+        alerts.add({
+          'type': 'high_cost',
+          'severity': 'warning',
+          'title': 'Coûts élevés',
+          'message': 'Les coûts de ${metric.cropType} sont élevés: ${metric.costPerHectare.toStringAsFixed(0)} FCFA/ha',
+          'cropId': metric.id,
+          'action': 'Optimiser les intrants',
+        });
       }
     }
-    return null;
-  }
 
-  List<Crop> getRecommendedCrops(String soilTypeId) {
-    return _crops.values
-        .where((crop) => crop.suitableSoilTypes.contains(soilTypeId))
-        .toList();
-  }
-
-  Crop? getCrop(String cropId) {
-    return _crops[cropId];
-  }
-
-  List<CropActivity> getUpcomingActivities(String cropId, DateTime plantingDate) {
-    final crop = _crops[cropId];
-    if (crop == null) return [];
-
-    final now = DateTime.now();
-    return crop.technicalItinerary.activities
-        .where((activity) {
-          final activityDate = plantingDate.add(Duration(days: activity.dayFromPlanting));
-          return activityDate.isAfter(now) && activity.isReminder;
-        })
-        .toList();
-  }
-
-  List<WeatherAlert> getCurrentWeatherAlerts() {
-    // Simulation d'alertes météo
-    return [
-      WeatherAlert(
-        id: 'alert_1',
-        type: 'rain',
-        severity: 'medium',
-        message: 'Fortes pluies prévues dans les prochains jours',
-        startDate: DateTime.now().add(const Duration(days: 1)),
-        endDate: DateTime.now().add(const Duration(days: 3)),
-        recommendations: 'Éviter les travaux de semis. Protéger les cultures sensibles.',
-      ),
-    ];
+    return alerts;
   }
 }
