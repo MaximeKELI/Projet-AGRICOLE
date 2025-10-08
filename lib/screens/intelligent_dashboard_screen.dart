@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'marketplace_screen.dart';
 import '../screens/user_model.dart';
 import 'package:flutter/material.dart';
+import '../models/payment_models.dart';
 import 'package:provider/provider.dart';
+import '../services/payment_service.dart';
 import '../models/agricultural_metrics.dart';
 import '../services/agricultural_service.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -1447,6 +1450,24 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                 foregroundColor: Colors.white,
               ),
             ),
+            ElevatedButton.icon(
+              onPressed: _openMarketplace,
+              icon: const Icon(Icons.store),
+              label: const Text('Marketplace'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _openPayments,
+              icon: const Icon(Icons.payment),
+              label: const Text('Paiements'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ],
@@ -1747,6 +1768,24 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
             child: const Text('Annuler'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openMarketplace() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const MarketplaceScreen(),
+      ),
+    );
+  }
+
+  void _openPayments() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _PaymentsScreen(),
       ),
     );
   }
@@ -2521,6 +2560,378 @@ class _ReportsScreen extends StatelessWidget {
         ),
       );
     });
+  }
+}
+
+class _PaymentsScreen extends StatefulWidget {
+  @override
+  _PaymentsScreenState createState() => _PaymentsScreenState();
+}
+
+class _PaymentsScreenState extends State<_PaymentsScreen>
+    with TickerProviderStateMixin {
+  late TabController _tabController;
+  List<PaymentMethod> _paymentMethods = [];
+  List<PaymentTransaction> _transactions = [];
+  Map<String, dynamic> _statistics = {};
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _loadData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final paymentMethods = PaymentService.getPaymentMethods();
+      final transactions = await PaymentService.getPaymentHistory();
+      final statistics = await PaymentService.getPaymentStatistics();
+
+      setState(() {
+        _paymentMethods = paymentMethods;
+        _transactions = transactions;
+        _statistics = statistics;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors du chargement: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Paiements'),
+        backgroundColor: Colors.teal[800],
+        foregroundColor: Colors.white,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.payment), text: 'Méthodes'),
+            Tab(icon: Icon(Icons.history), text: 'Historique'),
+            Tab(icon: Icon(Icons.analytics), text: 'Statistiques'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildPaymentMethodsTab(),
+          _buildTransactionsTab(),
+          _buildStatisticsTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _paymentMethods.length,
+      itemBuilder: (context, index) {
+        final method = _paymentMethods[index];
+        return _buildPaymentMethodCard(method);
+      },
+    );
+  }
+
+  Widget _buildPaymentMethodCard(PaymentMethod method) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListTile(
+        leading: Text(
+          method.icon,
+          style: const TextStyle(fontSize: 32),
+        ),
+        title: Text(
+          method.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(_getPaymentMethodDescription(method.type)),
+        trailing: Switch(
+          value: method.isActive,
+          onChanged: (value) {
+            setState(() {
+              // Dans une vraie implémentation, on mettrait à jour en base de données
+            });
+          },
+        ),
+        onTap: () => _showPaymentMethodDetails(method),
+      ),
+    );
+  }
+
+  Widget _buildTransactionsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _transactions.length,
+      itemBuilder: (context, index) {
+        final transaction = _transactions[index];
+        return _buildTransactionCard(transaction);
+      },
+    );
+  }
+
+  Widget _buildTransactionCard(PaymentTransaction transaction) {
+    final method = _paymentMethods.firstWhere(
+      (m) => m.id == transaction.paymentMethodId,
+      orElse: () => PaymentMethod(
+        id: 'unknown',
+        name: 'Inconnu',
+        type: 'unknown',
+        icon: '❓',
+      ),
+    );
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Transaction #${transaction.id}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getTransactionStatusColor(transaction.status),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _getTransactionStatusText(transaction.status),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Text(method.icon, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 8),
+                Text(method.name),
+                const Spacer(),
+                Text(
+                  '${NumberFormat.currency(symbol: '', decimalDigits: 0).format(transaction.amount)} ${transaction.currency}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Date: ${DateFormat('dd/MM/yyyy HH:mm').format(transaction.createdAt)}',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+            if (transaction.transactionReference != null)
+              Text(
+                'Référence: ${transaction.transactionReference}',
+                style: TextStyle(color: Colors.grey[600], fontSize: 12),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatisticsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _buildStatCard(
+          'Transactions Totales',
+          '${_statistics['totalTransactions']}',
+          Icons.receipt,
+          Colors.blue,
+        ),
+        _buildStatCard(
+          'Montant Total',
+          '${NumberFormat.currency(symbol: '', decimalDigits: 0).format(_statistics['totalAmount'])} FCFA',
+          Icons.attach_money,
+          Colors.green,
+        ),
+        _buildStatCard(
+          'Taux de Succès',
+          '${(_statistics['successRate'] * 100).toStringAsFixed(1)}%',
+          Icons.check_circle,
+          Colors.orange,
+        ),
+        _buildStatCard(
+          'Montant Moyen',
+          '${NumberFormat.currency(symbol: '', decimalDigits: 0).format(_statistics['averageTransactionAmount'])} FCFA',
+          Icons.trending_up,
+          Colors.purple,
+        ),
+        _buildStatCard(
+          'Croissance Mensuelle',
+          '${(_statistics['monthlyGrowth'] * 100).toStringAsFixed(1)}%',
+          Icons.trending_up,
+          Colors.teal,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Icon(icon, size: 40, color: color),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getPaymentMethodDescription(String type) {
+    switch (type) {
+      case 'mobile_money':
+        return 'Paiement mobile (Orange Money, MTN, Wave)';
+      case 'card':
+        return 'Carte bancaire (Visa, Mastercard)';
+      case 'bank_transfer':
+        return 'Virement bancaire';
+      case 'crypto':
+        return 'Cryptomonnaie (Bitcoin, Ethereum)';
+      case 'cash':
+        return 'Paiement à la livraison';
+      default:
+        return 'Méthode de paiement';
+    }
+  }
+
+  Color _getTransactionStatusColor(String status) {
+    switch (status) {
+      case 'completed':
+        return Colors.green;
+      case 'pending':
+        return Colors.orange;
+      case 'failed':
+        return Colors.red;
+      case 'refunded':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getTransactionStatusText(String status) {
+    switch (status) {
+      case 'completed':
+        return 'Terminé';
+      case 'pending':
+        return 'En attente';
+      case 'failed':
+        return 'Échoué';
+      case 'refunded':
+        return 'Remboursé';
+      default:
+        return status;
+    }
+  }
+
+  void _showPaymentMethodDetails(PaymentMethod method) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(method.name),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Type: ${_getPaymentMethodDescription(method.type)}'),
+            const SizedBox(height: 8),
+            Text('Statut: ${method.isActive ? 'Actif' : 'Inactif'}'),
+            if (method.config != null) ...[
+              const SizedBox(height: 8),
+              const Text('Configuration:'),
+              ...method.config!.entries.map((entry) => 
+                Text('  ${entry.key}: ${entry.value}')),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
