@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 class AnimationConfig {
   // Durées d'animation
   static const Duration fast = Duration(milliseconds: 300);

@@ -1,7 +1,6 @@
-import '../models/weather_data.dart' as models;
 import 'package:flutter/material.dart';
-import '../services/weather_service.dart' as services;
 import 'package:geolocator/geolocator.dart' as geo;
+import '../services/weather_service.dart' as services;
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 class ConnectedWeatherScreen extends StatefulWidget {
@@ -22,7 +21,6 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
   Map<String, dynamic>? _agriculturalData;
   bool _isLoading = true;
   String? _errorMessage;
-  geo.Position? _currentPosition;
 
   @override
   void initState() {
@@ -55,9 +53,6 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
         desiredAccuracy: geo.LocationAccuracy.high,
       );
 
-      setState(() {
-        _currentPosition = position;
-      });
 
       // Charger les données météo
       await _loadWeatherData(position.latitude, position.longitude);
@@ -367,21 +362,21 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
             const SizedBox(height: 12),
             _buildAdviceCard(
               'Conditions Actuelles',
-              'Température: ${_currentWeather?.temperature?.toStringAsFixed(1) ?? 'N/A'}°C, Humidité: ${_currentWeather?.humidity?.toStringAsFixed(1) ?? 'N/A'}%',
+              'Température: ${_currentWeather!.temperature.toStringAsFixed(1)}°C, Humidité: ${_currentWeather!.humidity.toStringAsFixed(1)}%',
               Icons.info,
               Colors.blue,
             ),
             const SizedBox(height: 8),
             _buildAdviceCard(
               'Irrigation',
-              'Vitesse du vent: ${_currentWeather?.windSpeed?.toStringAsFixed(1) ?? 'N/A'} km/h, Direction: ${_currentWeather?.windDirection ?? 'N/A'}',
+              'Vitesse du vent: ${_currentWeather!.windSpeed.toStringAsFixed(1)} km/h, Direction: ${_currentWeather!.windDirection}',
               Icons.water_drop,
               Colors.cyan,
             ),
             const SizedBox(height: 8),
             _buildAdviceCard(
               'Risques de Maladies',
-              'UV Index: ${_currentWeather?.uvIndex?.toStringAsFixed(1) ?? 'N/A'}, Pluie: ${_currentWeather?.rainfall?.toStringAsFixed(1) ?? 'N/A'} mm',
+              'UV Index: ${_currentWeather!.uvIndex.toStringAsFixed(1)}, Pluie: ${_currentWeather!.rainfall.toStringAsFixed(1)} mm',
               Icons.warning,
               Colors.orange,
             ),
@@ -427,7 +422,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
   }
 
   Widget _buildForecastSection() {
-    if (_forecast == null) return const SizedBox.shrink();
+    if (_forecast.isEmpty) return const SizedBox.shrink();
 
     return Card(
       elevation: 4,

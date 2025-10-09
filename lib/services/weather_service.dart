@@ -143,7 +143,7 @@ class WeatherAlert {
     required this.description,
     required this.startTime,
     required this.endTime,
-    required this.recommendations,
+    this.recommendations = const [],
     this.metadata,
   });
 
@@ -169,7 +169,7 @@ class WeatherAlert {
     description: json['description'],
     startTime: DateTime.parse(json['startTime']),
     endTime: DateTime.parse(json['endTime']),
-    recommendations: List<String>.from(json['recommendations']),
+    recommendations: List<String>.from(json['recommendations'] ?? []),
     metadata: json['metadata'],
   );
 }
@@ -178,7 +178,7 @@ class WeatherService {
   static final Map<String, WeatherData> _currentWeather = {};
   static final Map<String, List<WeatherForecast>> _forecasts = {};
   static final List<WeatherAlert> _alerts = [];
-  
+
   static final StreamController<WeatherData> _weatherController = StreamController<WeatherData>.broadcast();
   static final StreamController<WeatherAlert> _alertController = StreamController<WeatherAlert>.broadcast();
 
@@ -188,73 +188,55 @@ class WeatherService {
 
   // Initialiser le service
   static Future<void> initialize() async {
-    // Initialisation du service météo
-    print('Service météo initialisé');
+    print('WeatherService initialized.');
   }
-
-  // API Key pour OpenWeatherMap (à remplacer par votre vraie clé)
-  static const String _apiKey = 'your_openweathermap_api_key_here';
-  static const String _baseUrl = 'https://api.openweathermap.org/data/2.5';
 
   // Obtenir la météo actuelle
   static Future<WeatherData> getCurrentWeather(String location) async {
-    // Simulation de données météo (dans une vraie implémentation, on ferait un appel API)
     await Future.delayed(const Duration(seconds: 1));
-
     final random = Random();
-    final weatherData = WeatherData(
+
+    final weather = WeatherData(
       location: location,
-      temperature: 25.0 + random.nextDouble() * 15.0, // 25-40°C
-      humidity: 40.0 + random.nextDouble() * 40.0, // 40-80%
-      windSpeed: random.nextDouble() * 20.0, // 0-20 km/h
+      temperature: 25.0 + random.nextDouble() * 10, // 25-35°C
+      humidity: 60.0 + random.nextDouble() * 30, // 60-90%
+      windSpeed: 5.0 + random.nextDouble() * 15, // 5-20 km/h
       windDirection: _getRandomWindDirection(),
-      pressure: 1010.0 + random.nextDouble() * 20.0, // 1010-1030 hPa
-      visibility: 8.0 + random.nextDouble() * 2.0, // 8-10 km
+      pressure: 1010 + random.nextDouble() * 20, // 1010-1030 hPa
+      visibility: 8.0 + random.nextDouble() * 4, // 8-12 km
       condition: _getRandomCondition(),
       description: _getRandomDescription(),
-      uvIndex: random.nextDouble() * 11.0, // 0-11
-      rainfall: random.nextDouble() * 10.0, // 0-10 mm
+      uvIndex: 3.0 + random.nextDouble() * 8, // 3-11
+      rainfall: random.nextDouble() * 5, // 0-5 mm
       timestamp: DateTime.now(),
-      metadata: {
-        'source': 'simulation',
-        'accuracy': 0.85,
-      },
     );
 
-    _currentWeather[location] = weatherData;
-    _weatherController.add(weatherData);
-
-    return weatherData;
+    _currentWeather[location] = weather;
+    _weatherController.add(weather);
+        return weather;
   }
 
   // Obtenir les prévisions météo
-  static Future<List<WeatherForecast>> getWeatherForecast(String location, {int days = 5}) async {
-    // Simulation de prévisions météo
+  static Future<List<WeatherForecast>> getWeatherForecast(String location, {int days = 3}) async {
     await Future.delayed(const Duration(seconds: 1));
-
-    final forecasts = <WeatherForecast>[];
     final random = Random();
+    final List<WeatherForecast> forecasts = [];
 
-    for (int i = 0; i < days; i++) {
-      final date = DateTime.now().add(Duration(days: i));
-      final baseTemp = 25.0 + random.nextDouble() * 15.0;
-      
-      forecasts.add(WeatherForecast(
-        location: location,
-        date: date,
-        minTemperature: baseTemp - 5.0 - random.nextDouble() * 5.0,
-        maxTemperature: baseTemp + random.nextDouble() * 5.0,
-        humidity: 40.0 + random.nextDouble() * 40.0,
-        windSpeed: random.nextDouble() * 20.0,
-        condition: _getRandomCondition(),
-        description: _getRandomDescription(),
-        rainfall: random.nextDouble() * 15.0,
-        uvIndex: random.nextDouble() * 11.0,
-        metadata: {
-          'source': 'simulation',
-          'confidence': 0.75 + random.nextDouble() * 0.2,
-        },
-      ));
+    for (int i = 1; i <= days; i++) {
+      forecasts.add(
+        WeatherForecast(
+          location: location,
+          date: DateTime.now().add(Duration(days: i)),
+          minTemperature: 20.0 + random.nextDouble() * 5,
+          maxTemperature: 28.0 + random.nextDouble() * 7,
+          humidity: 65.0 + random.nextDouble() * 20,
+          windSpeed: 8.0 + random.nextDouble() * 12,
+          condition: _getRandomCondition(),
+          description: _getRandomDescription(),
+          rainfall: random.nextDouble() * 3,
+          uvIndex: 3.0 + random.nextDouble() * 8,
+        ),
+      );
     }
 
     _forecasts[location] = forecasts;
@@ -263,228 +245,78 @@ class WeatherService {
 
   // Obtenir les alertes météo
   static Future<List<WeatherAlert>> getWeatherAlerts(String location) async {
-    // Simulation d'alertes météo
     await Future.delayed(const Duration(milliseconds: 500));
-
-    final alerts = <WeatherAlert>[];
     final random = Random();
-
-    // Simuler quelques alertes occasionnelles
-    if (random.nextDouble() < 0.3) { // 30% de chance d'avoir une alerte
-      final alertTypes = ['storm', 'flood', 'drought', 'heat_wave', 'cold_wave'];
-      final severities = ['low', 'medium', 'high', 'extreme'];
-      
-      final alertType = alertTypes[random.nextInt(alertTypes.length)];
-      final severity = severities[random.nextInt(severities.length)];
-      
+    
+    if (random.nextBool()) {
       final alert = WeatherAlert(
         id: 'alert_${DateTime.now().millisecondsSinceEpoch}',
         location: location,
-        type: alertType,
-        severity: severity,
-        title: _getAlertTitle(alertType, severity),
-        description: _getAlertDescription(alertType, severity),
+        type: _getRandomAlertType(),
+        severity: _getRandomSeverity(),
+        title: _getAlertTitle(_getRandomAlertType()),
+        description: _getAlertDescription(_getRandomAlertType(), _getRandomSeverity()),
         startTime: DateTime.now(),
-        endTime: DateTime.now().add(Duration(hours: 6 + random.nextInt(48))),
-        recommendations: _getAlertRecommendations(alertType),
-        metadata: {
-          'source': 'simulation',
-          'confidence': 0.8 + random.nextDouble() * 0.2,
-        },
+        endTime: DateTime.now().add(const Duration(hours: 24)),
+        recommendations: _getAlertRecommendations(_getRandomAlertType()),
       );
-
-      alerts.add(alert);
+      
       _alerts.add(alert);
       _alertController.add(alert);
     }
 
-    return alerts;
+    return _alerts;
   }
 
-  // Obtenir les données météo historiques
-  static Future<List<WeatherData>> getHistoricalWeather(
-    String location, {
-    required DateTime startDate,
-    required DateTime endDate,
-  }) async {
-    // Simulation de données historiques
-    await Future.delayed(const Duration(seconds: 1));
-
-    final historicalData = <WeatherData>[];
+  // Obtenir les recommandations agricoles
+  static Future<List<String>> getAgriculturalRecommendations(String location) async {
+    await Future.delayed(const Duration(milliseconds: 500));
     final random = Random();
-    final days = endDate.difference(startDate).inDays;
+    
+    final recommendations = [
+      'Irriguer les cultures le matin tôt',
+      'Surveiller les signes de stress hydrique',
+      'Ajuster la fertilisation selon les conditions',
+      'Protéger les cultures sensibles au vent',
+      'Planifier les récoltes selon la météo',
+    ];
 
-    for (int i = 0; i < days; i++) {
-      final date = startDate.add(Duration(days: i));
-      final baseTemp = 25.0 + random.nextDouble() * 15.0;
-      
-      historicalData.add(WeatherData(
-        location: location,
-        temperature: baseTemp,
-        humidity: 40.0 + random.nextDouble() * 40.0,
-        windSpeed: random.nextDouble() * 20.0,
-        windDirection: _getRandomWindDirection(),
-        pressure: 1010.0 + random.nextDouble() * 20.0,
-        visibility: 8.0 + random.nextDouble() * 2.0,
-        condition: _getRandomCondition(),
-        description: _getRandomDescription(),
-        uvIndex: random.nextDouble() * 11.0,
-        rainfall: random.nextDouble() * 10.0,
-        timestamp: date,
-        metadata: {
-          'source': 'historical_simulation',
-          'quality': 'good',
-        },
-      ));
-    }
-
-    return historicalData;
+    return recommendations.take(2 + random.nextInt(3)).toList();
   }
 
-  // Obtenir les recommandations agricoles basées sur la météo
-  static Future<List<String>> getAgriculturalRecommendations(
-    String location, {
-    String? cropType,
-  }) async {
-    final weather = await getCurrentWeather(location);
-    final recommendations = <String>[];
-
-    // Recommandations basées sur la température
-    if (weather.temperature > 35) {
-      recommendations.add('Température élevée - Augmenter l\'irrigation et protéger les cultures du soleil');
-    } else if (weather.temperature < 15) {
-      recommendations.add('Température basse - Protéger les cultures sensibles au froid');
-    }
-
-    // Recommandations basées sur l'humidité
-    if (weather.humidity > 80) {
-      recommendations.add('Humidité élevée - Surveiller les maladies fongiques et améliorer la ventilation');
-    } else if (weather.humidity < 40) {
-      recommendations.add('Humidité faible - Augmenter l\'irrigation et utiliser du paillage');
-    }
-
-    // Recommandations basées sur la pluviométrie
-    if (weather.rainfall > 20) {
-      recommendations.add('Pluie importante - Éviter les traitements et surveiller le drainage');
-    } else if (weather.rainfall < 5) {
-      recommendations.add('Sécheresse - Programmer l\'irrigation et réduire la fertilisation');
-    }
-
-    // Recommandations basées sur le vent
-    if (weather.windSpeed > 15) {
-      recommendations.add('Vent fort - Reporter les traitements et protéger les cultures fragiles');
-    }
-
-    // Recommandations basées sur l'index UV
-    if (weather.uvIndex > 8) {
-      recommendations.add('Index UV élevé - Éviter les travaux en plein soleil et protéger les cultures');
-    }
-
-    // Recommandations spécifiques aux cultures
-    if (cropType != null) {
-      recommendations.addAll(_getCropSpecificRecommendations(cropType, weather));
-    }
-
-    return recommendations;
-  }
-
-  // Obtenir les recommandations spécifiques aux cultures
-  static List<String> _getCropSpecificRecommendations(String cropType, WeatherData weather) {
-    final recommendations = <String>[];
-
-    switch (cropType.toLowerCase()) {
-      case 'riz':
-        if (weather.temperature > 30 && weather.humidity > 70) {
-          recommendations.add('Riz - Conditions idéales pour la croissance, surveiller les maladies');
-        }
-        if (weather.rainfall < 10) {
-          recommendations.add('Riz - Besoin d\'irrigation supplémentaire');
-        }
-        break;
-      case 'tomates':
-        if (weather.humidity > 80) {
-          recommendations.add('Tomates - Risque élevé de mildiou, traiter préventivement');
-        }
-        if (weather.temperature > 35) {
-          recommendations.add('Tomates - Protéger du stress thermique avec de l\'ombrage');
-        }
-        break;
-      case 'mangues':
-        if (weather.rainfall > 15) {
-          recommendations.add('Mangues - Éviter la récolte par temps humide');
-        }
-        if (weather.windSpeed > 10) {
-          recommendations.add('Mangues - Risque de chute des fruits, récolter rapidement');
-        }
-        break;
-    }
-
-    return recommendations;
-  }
-
-  // Obtenir les conditions météo optimales pour une culture
-  static Map<String, dynamic> getOptimalConditions(String cropType) {
-    switch (cropType.toLowerCase()) {
-      case 'riz':
-        return {
-          'temperature': {'min': 20, 'max': 35, 'optimal': 28},
-          'humidity': {'min': 60, 'max': 90, 'optimal': 75},
-          'rainfall': {'min': 100, 'max': 200, 'optimal': 150},
-          'soilMoisture': {'min': 80, 'max': 100, 'optimal': 90},
-        };
-      case 'tomates':
-        return {
-          'temperature': {'min': 18, 'max': 30, 'optimal': 24},
-          'humidity': {'min': 50, 'max': 70, 'optimal': 60},
-          'rainfall': {'min': 50, 'max': 100, 'optimal': 75},
-          'soilMoisture': {'min': 60, 'max': 80, 'optimal': 70},
-        };
-      case 'mangues':
-        return {
-          'temperature': {'min': 20, 'max': 35, 'optimal': 28},
-          'humidity': {'min': 50, 'max': 80, 'optimal': 65},
-          'rainfall': {'min': 100, 'max': 200, 'optimal': 150},
-          'soilMoisture': {'min': 70, 'max': 90, 'optimal': 80},
-        };
-      default:
-        return {
-          'temperature': {'min': 20, 'max': 30, 'optimal': 25},
-          'humidity': {'min': 60, 'max': 80, 'optimal': 70},
-          'rainfall': {'min': 100, 'max': 150, 'optimal': 125},
-          'soilMoisture': {'min': 70, 'max': 85, 'optimal': 77},
-        };
-    }
-  }
-
-  // Obtenir une direction de vent aléatoire
+  // Méthodes utilitaires
   static String _getRandomWindDirection() {
     final directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return directions[Random().nextInt(directions.length)];
   }
 
-  // Obtenir une condition météo aléatoire
   static String _getRandomCondition() {
-    final conditions = ['clear', 'cloudy', 'partly_cloudy', 'rainy', 'stormy', 'foggy'];
+    final conditions = ['Ensoleillé', 'Nuageux', 'Partiellement nuageux', 'Pluvieux', 'Orageux'];
     return conditions[Random().nextInt(conditions.length)];
   }
 
-  // Obtenir une description météo aléatoire
   static String _getRandomDescription() {
     final descriptions = [
       'Ciel dégagé',
-      'Nuageux',
-      'Partiellement nuageux',
-      'Pluvieux',
-      'Orageux',
-      'Brouillard',
-      'Ensoleillé',
-      'Couvert',
+      'Quelques nuages',
+      'Nuages épars',
+      'Averses légères',
+      'Pluie modérée',
     ];
     return descriptions[Random().nextInt(descriptions.length)];
   }
 
-  // Obtenir le titre d'une alerte
-  static String _getAlertTitle(String type, String severity) {
+  static String _getRandomAlertType() {
+    final types = ['storm', 'flood', 'drought', 'heat_wave', 'cold_wave'];
+    return types[Random().nextInt(types.length)];
+  }
+
+  static String _getRandomSeverity() {
+    final severities = ['low', 'medium', 'high', 'extreme'];
+    return severities[Random().nextInt(severities.length)];
+  }
+
+  static String _getAlertTitle(String type) {
     switch (type) {
       case 'storm':
         return 'Alerte Orage';
@@ -501,7 +333,6 @@ class WeatherService {
     }
   }
 
-  // Obtenir la description d'une alerte
   static String _getAlertDescription(String type, String severity) {
     switch (type) {
       case 'storm':
@@ -519,7 +350,6 @@ class WeatherService {
     }
   }
 
-  // Obtenir les recommandations d'alerte
   static List<String> _getAlertRecommendations(String type) {
     switch (type) {
       case 'storm':
@@ -548,22 +378,16 @@ class WeatherService {
         ];
       case 'cold_wave':
         return [
-          'Protéger les cultures sensibles',
-          'Utiliser des serres ou des tunnels',
-          'Surveiller les températures',
+          'Protéger les cultures sensibles au gel',
+          'Utiliser des couvertures ou des tunnels',
+          'Surveiller les températures nocturnes',
         ];
       default:
         return [
           'Surveiller les conditions météorologiques',
           'Adapter les pratiques agricoles',
-          'Protéger les cultures et les équipements',
+          'Rester informé des alertes',
         ];
     }
-  }
-
-  // Nettoyer les données anciennes
-  static void cleanupOldData({Duration maxAge = const Duration(days: 7)}) {
-    final cutoffDate = DateTime.now().subtract(maxAge);
-    _alerts.removeWhere((alert) => alert.endTime.isBefore(cutoffDate));
   }
 }
