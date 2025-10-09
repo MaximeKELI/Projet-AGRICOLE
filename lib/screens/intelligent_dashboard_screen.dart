@@ -4,10 +4,17 @@ import 'marketplace_screen.dart';
 import '../screens/user_model.dart';
 import 'package:flutter/material.dart';
 import '../models/payment_models.dart';
+import '../services/sync_service.dart';
+import '../services/chat_service.dart';
 import 'package:provider/provider.dart';
 import '../services/payment_service.dart';
+import '../services/storage_service.dart';
+import '../services/weather_service.dart';
+import '../services/analytics_service.dart';
+import '../services/inventory_service.dart';
 import '../models/agricultural_metrics.dart';
 import '../services/agricultural_service.dart';
+import '../services/notification_service.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 // Classe de traduction
@@ -349,6 +356,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+    _initializeServices();
     _loadDashboardData();
     _loadWeatherData();
     _generateAIRecommendations();
@@ -356,9 +364,36 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
     _setupAutoRefresh();
   }
 
+  Future<void> _initializeServices() async {
+    try {
+      // Initialiser tous les services
+      await NotificationService.initialize();
+      await ChatService.initialize();
+      await InventoryService.initialize();
+      await WeatherService.initialize();
+      
+      // Démarrer la synchronisation automatique
+      SyncService.startAutoSync();
+      
+      // Charger les paramètres sauvegardés
+      final savedSettings = await StorageService.getSettings();
+      if (savedSettings != null) {
+        setState(() {
+          _settings = savedSettings;
+        });
+        _applySettings();
+      }
+      
+      print('Tous les services initialisés avec succès');
+    } catch (e) {
+      print('Erreur lors de l\'initialisation des services: $e');
+    }
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
+    SyncService.stopAutoSync();
     super.dispose();
   }
 
@@ -1468,6 +1503,33 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                 foregroundColor: Colors.white,
               ),
             ),
+            ElevatedButton.icon(
+              onPressed: _openChat,
+              icon: const Icon(Icons.chat),
+              label: const Text('Chat'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.indigo[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _openInventory,
+              icon: const Icon(Icons.inventory),
+              label: const Text('Stocks'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.brown[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _openAnalytics,
+              icon: const Icon(Icons.analytics),
+              label: const Text('Analytics'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.deepPurple[800],
+                foregroundColor: Colors.white,
+              ),
+            ),
           ],
         ),
       ],
@@ -1786,6 +1848,33 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
       context,
       MaterialPageRoute(
         builder: (context) => _PaymentsScreen(),
+      ),
+    );
+  }
+
+  void _openChat() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _ChatScreen(),
+      ),
+    );
+  }
+
+  void _openInventory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _InventoryScreen(),
+      ),
+    );
+  }
+
+  void _openAnalytics() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _AnalyticsScreen(),
       ),
     );
   }
@@ -2932,6 +3021,699 @@ class _PaymentsScreenState extends State<_PaymentsScreen>
         ],
       ),
     );
+  }
+}
+
+class _ChatScreen extends StatefulWidget {
+  @override
+  _ChatScreenState createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<_ChatScreen> with TickerProviderStateMixin {
+  late TabController _tabController;
+  List<ChatRoom> _rooms = [];
+  List<ChatMessage> _messages = [];
+  String _selectedRoomId = '';
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _loadChatData();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadChatData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final rooms = ChatService.getRooms();
+      setState(() {
+        _rooms = rooms;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors du chargement: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chat'),
+        backgroundColor: Colors.indigo[800],
+        foregroundColor: Colors.white,
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.chat_bubble), text: 'Conversations'),
+            Tab(icon: Icon(Icons.people), text: 'Contacts'),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildRoomsTab(),
+          _buildContactsTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _rooms.length,
+      itemBuilder: (context, index) {
+        final room = _rooms[index];
+        return _buildRoomCard(room);
+      },
+    );
+  }
+
+  Widget _buildRoomCard(ChatRoom room) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.indigo[800],
+          child: Text(
+            room.name[0].toUpperCase(),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        title: Text(
+          room.name,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(room.lastMessage ?? 'Aucun message'),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (room.unreadCount > 0)
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${room.unreadCount}',
+                  style: const TextStyle(color: Colors.white, fontSize: 12),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              room.lastMessageTime != null 
+                  ? DateFormat('HH:mm').format(room.lastMessageTime!)
+                  : '',
+              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+          ],
+        ),
+        onTap: () => _openChatRoom(room),
+      ),
+    );
+  }
+
+  Widget _buildContactsTab() {
+    return const Center(
+      child: Text('Fonctionnalité de contacts en cours de développement'),
+    );
+  }
+
+  void _openChatRoom(ChatRoom room) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => _ChatRoomScreen(room: room),
+      ),
+    );
+  }
+}
+
+class _ChatRoomScreen extends StatefulWidget {
+  final ChatRoom room;
+
+  const _ChatRoomScreen({required this.room});
+
+  @override
+  _ChatRoomScreenState createState() => _ChatRoomScreenState();
+}
+
+class _ChatRoomScreenState extends State<_ChatRoomScreen> {
+  final TextEditingController _messageController = TextEditingController();
+  List<ChatMessage> _messages = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final messages = ChatService.getMessages(widget.room.id);
+      setState(() {
+        _messages = messages;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.room.name),
+        backgroundColor: Colors.indigo[800],
+        foregroundColor: Colors.white,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final message = _messages[index];
+                      return _buildMessageBubble(message);
+                    },
+                  ),
+          ),
+          _buildMessageInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(ChatMessage message) {
+    final isMe = message.senderId == 'user_001';
+    
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.7,
+        ),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.indigo[800] : Colors.grey[300],
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isMe)
+              Text(
+                message.senderName,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                  fontSize: 12,
+                ),
+              ),
+            Text(
+              message.content,
+              style: TextStyle(
+                color: isMe ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              DateFormat('HH:mm').format(message.timestamp),
+              style: TextStyle(
+                color: isMe ? Colors.white70 : Colors.grey[600],
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageInput() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.2),
+            spreadRadius: 1,
+            blurRadius: 5,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _messageController,
+              decoration: const InputDecoration(
+                hintText: 'Tapez votre message...',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              onSubmitted: (value) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: _sendMessage,
+            icon: const Icon(Icons.send),
+            color: Colors.indigo[800],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendMessage() {
+    final content = _messageController.text.trim();
+    if (content.isEmpty) return;
+
+    ChatService.sendMessage(
+      roomId: widget.room.id,
+      content: content,
+    );
+
+    _messageController.clear();
+    _loadMessages();
+  }
+}
+
+class _InventoryScreen extends StatefulWidget {
+  @override
+  _InventoryScreenState createState() => _InventoryScreenState();
+}
+
+class _InventoryScreenState extends State<_InventoryScreen> {
+  List<InventoryItem> _items = [];
+  List<InventoryAlert> _alerts = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInventoryData();
+  }
+
+  Future<void> _loadInventoryData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final items = InventoryService.getItems();
+      final alerts = InventoryService.getAlerts();
+      setState(() {
+        _items = items;
+        _alerts = alerts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Gestion des Stocks'),
+        backgroundColor: Colors.brown[800],
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (_alerts.isNotEmpty) _buildAlertsSection(),
+                Expanded(child: _buildItemsList()),
+              ],
+            ),
+    );
+  }
+
+  Widget _buildAlertsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.orange[100],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Alertes Stock',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.orange[800],
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._alerts.take(3).map((alert) => Text(
+                '• ${alert.message}',
+                style: TextStyle(color: Colors.orange[700]),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _items.length,
+      itemBuilder: (context, index) {
+        final item = _items[index];
+        return _buildItemCard(item);
+      },
+    );
+  }
+
+  Widget _buildItemCard(InventoryItem item) {
+    final stockPercentage = item.currentStock / item.maxStock;
+    final isLowStock = item.currentStock <= item.minStock;
+    final isOutOfStock = item.currentStock <= 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  item.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isOutOfStock
+                        ? Colors.red
+                        : isLowStock
+                            ? Colors.orange
+                            : Colors.green,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    isOutOfStock
+                        ? 'Rupture'
+                        : isLowStock
+                            ? 'Stock bas'
+                            : 'En stock',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Stock: ${item.currentStock} ${item.unit}'),
+            const SizedBox(height: 4),
+            LinearProgressIndicator(
+              value: stockPercentage,
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(
+                isOutOfStock
+                    ? Colors.red
+                    : isLowStock
+                        ? Colors.orange
+                        : Colors.green,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Min: ${item.minStock} ${item.unit}'),
+                Text('Max: ${item.maxStock} ${item.unit}'),
+                Text(
+                  '${NumberFormat.currency(symbol: '', decimalDigits: 0).format(item.unitPrice)} ${item.currency}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalyticsScreen extends StatefulWidget {
+  @override
+  _AnalyticsScreenState createState() => _AnalyticsScreenState();
+}
+
+class _AnalyticsScreenState extends State<_AnalyticsScreen> {
+  Map<String, dynamic> _performanceData = {};
+  List<Map<String, dynamic>> _recommendations = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAnalyticsData();
+  }
+
+  Future<void> _loadAnalyticsData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final performance = await AnalyticsService.analyzeAgriculturalPerformance(
+        userId: 'user_001',
+      );
+      final recommendations = await AnalyticsService.getPersonalizedRecommendations(
+        userId: 'user_001',
+      );
+      setState(() {
+        _performanceData = performance;
+        _recommendations = recommendations;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Analytics Avancés'),
+        backgroundColor: Colors.deepPurple[800],
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildPerformanceSection(),
+                  const SizedBox(height: 24),
+                  _buildRecommendationsSection(),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildPerformanceSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Performance Agricole',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildMetricCard('Efficacité Rendement', '${(_performanceData['yieldEfficiency'] * 100).toStringAsFixed(1)}%', Colors.green),
+            _buildMetricCard('Efficacité Coûts', '${(_performanceData['costEfficiency'] * 100).toStringAsFixed(1)}%', Colors.blue),
+            _buildMetricCard('Marge Bénéfice', '${(_performanceData['profitMargin'] * 100).toStringAsFixed(1)}%', Colors.orange),
+            _buildMetricCard('Score Global', '${(_performanceData['overallScore'] * 100).toStringAsFixed(1)}%', Colors.purple),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMetricCard(String title, String value, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              value,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationsSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Recommandations Personnalisées',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._recommendations.map((rec) => _buildRecommendationCard(rec)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendationCard(Map<String, dynamic> recommendation) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              recommendation['title'],
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(recommendation['description']),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _getPriorityColor(recommendation['priority']),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    recommendation['priority'].toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Impact: ${recommendation['impact']}',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getPriorityColor(String priority) {
+    switch (priority.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 }
 
