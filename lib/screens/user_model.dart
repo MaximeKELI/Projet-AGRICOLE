@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app_agrigeo/screens/db_universal.dart';
 
 class UserModel extends ChangeNotifier {
   String? _name;
@@ -8,6 +9,10 @@ class UserModel extends ChangeNotifier {
   String? _farmName;
   String? _location;
   String? _token; // Préparation pour l'authentification Django
+
+  UserModel() {
+    loadUser(); // Charger automatiquement l'utilisateur au démarrage
+  }
 
   // Getters
   String? get name => _name;
@@ -43,8 +48,21 @@ class UserModel extends ChangeNotifier {
   /// Charge les données utilisateur depuis le stockage local
   Future<void> loadUser() async {
     try {
-      // Simulation de chargement
-      await Future.delayed(Duration(milliseconds: 500));
+      // Charger depuis la base de données locale
+      final dbh = DatabaseHelper();
+      await dbh.ensureInitialized();
+      
+      final users = await dbh.getAllUsers();
+      if (users.isNotEmpty) {
+        final user = users.first;
+        _name = user['fullName'] as String?;
+        _email = user['email'] as String?;
+        _token = 'local_token_${user['id']}'; // Token local pour la session
+        _role = 'farmer'; // Rôle par défaut
+        print('Utilisateur chargé: $_email');
+      } else {
+        print('Aucun utilisateur trouvé');
+      }
 
       notifyListeners();
     } catch (e) {

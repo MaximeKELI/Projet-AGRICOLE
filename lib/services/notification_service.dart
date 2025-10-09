@@ -17,24 +17,33 @@ class NotificationService {
   static Future<void> initialize() async {
     if (_isInitialized) return;
 
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-    
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
+    try {
+      const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+        requestAlertPermission: true,
+        requestBadgePermission: true,
+        requestSoundPermission: true,
+      );
+      
+      const InitializationSettings settings = InitializationSettings(
+        android: androidSettings,
+        iOS: iosSettings,
+        linux: LinuxInitializationSettings(
+          defaultActionName: 'Open notification',
+        ),
+      );
 
-    await _notifications.initialize(
-      settings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
+      await _notifications.initialize(
+        settings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
 
-    _isInitialized = true;
+      _isInitialized = true;
+    } catch (e) {
+      print('Erreur lors de l\'initialisation des notifications: $e');
+      // Continuer sans notifications sur les plateformes non supportées
+      _isInitialized = true;
+    }
   }
 
   // Gérer le tap sur une notification

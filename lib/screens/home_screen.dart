@@ -115,7 +115,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel>(context);
-    final isLoggedIn = user.name != null;
+    final isLoggedIn = user.isLoggedIn;
 
     return Scaffold(
       appBar: AppBar(

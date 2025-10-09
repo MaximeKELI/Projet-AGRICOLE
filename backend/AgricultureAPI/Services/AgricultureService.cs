@@ -55,6 +55,11 @@ namespace AgricultureAPI.Services
             return commune?.SoilType;
         }
 
+        public async Task<IEnumerable<Crop>> GetCropsAsync()
+        {
+            return await _cropRepository.GetAllAsync();
+        }
+
         public async Task<IEnumerable<Crop>> GetRecommendedCropsAsync(string soilTypeId)
         {
             return await _soilTypeRepository.GetSuitableCropsAsync(soilTypeId);

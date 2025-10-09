@@ -368,25 +368,52 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
 
   Future<void> _initializeServices() async {
     try {
-      // Initialiser tous les services
-      await NotificationService.initialize();
-      await ChatService.initialize();
-      await InventoryService.initialize();
-      await WeatherService.initialize();
-      
-      // Démarrer la synchronisation automatique
-      SyncService.startAutoSync();
-      
-      // Charger les paramètres sauvegardés
-      final savedSettings = await StorageService.getSettings();
-      if (savedSettings != null) {
-        setState(() {
-          _settings = savedSettings;
-        });
-        _applySettings();
+      // Initialiser tous les services avec gestion d'erreur
+      try {
+        await NotificationService.initialize();
+      } catch (e) {
+        print('Erreur notifications: $e');
       }
       
-      print('Tous les services initialisés avec succès');
+      try {
+        await ChatService.initialize();
+      } catch (e) {
+        print('Erreur chat: $e');
+      }
+      
+      try {
+        await InventoryService.initialize();
+      } catch (e) {
+        print('Erreur inventaire: $e');
+      }
+      
+      try {
+        await WeatherService.initialize();
+      } catch (e) {
+        print('Erreur météo: $e');
+      }
+      
+      // Démarrer la synchronisation automatique
+      try {
+        SyncService.startAutoSync();
+      } catch (e) {
+        print('Erreur sync: $e');
+      }
+      
+      // Charger les paramètres sauvegardés
+      try {
+        final savedSettings = await StorageService.getSettings();
+        if (savedSettings != null) {
+          setState(() {
+            _settings = savedSettings;
+          });
+          _applySettings();
+        }
+      } catch (e) {
+        print('Erreur paramètres: $e');
+      }
+      
+      print('Services initialisés (certains peuvent avoir échoué)');
     } catch (e) {
       print('Erreur lors de l\'initialisation des services: $e');
     }
@@ -407,7 +434,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
       });
 
       final user = Provider.of<UserModel>(context, listen: false);
-      if (user.email == null) {
+      if (!user.isLoggedIn || user.email == null) {
         setState(() {
           _errorMessage = 'Utilisateur non connecté';
           _isLoading = false;

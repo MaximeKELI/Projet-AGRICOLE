@@ -15,6 +15,13 @@ namespace AgricultureAPI.Controllers
             _agricultureService = agricultureService;
         }
 
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Crop>>> GetCrops()
+        {
+            var crops = await _agricultureService.GetCropsAsync();
+            return Ok(crops);
+        }
+
         [HttpGet("{cropId}")]
         public async Task<ActionResult<Crop>> GetCrop(string cropId)
         {

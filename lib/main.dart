@@ -1,6 +1,7 @@
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart'
 import 'package:app_agrigeo/utils/theme.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,11 +13,10 @@ import 'package:app_agrigeo/screens/db_universal.dart';
 import 'package:app_agrigeo/screens/splash_screen.dart';
 import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
-import 'package:app_agrigeo/screens/registration_screen.dart';
 import 'package:app_agrigeo/screens/documents_screen.dart';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_agrigeo/screens/registration_screen.dart';
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,11 +48,13 @@ void main() async {
   }
 
   try {
-    if (!kIsWeb) {
+    if (!kIsWeb && defaultTargetPlatform != TargetPlatform.linux) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
       print("Firebase initialisé avec succès");
+    } else if (defaultTargetPlatform == TargetPlatform.linux) {
+      print("Firebase désactivé sur Linux pour le développement");
     }
   } catch (e) {
     print("Erreur Firebase: $e");

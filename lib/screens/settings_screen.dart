@@ -24,13 +24,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      String savedLanguage = prefs.getString('language') ?? 'Français';
+      
+      // Vérifier que la langue sauvegardée existe dans la liste
+      if (!_languages.contains(savedLanguage)) {
+        savedLanguage = 'Français';
+      }
+      
       setState(() {
         _darkMode = prefs.getBool('darkMode') ?? false;
         _notificationsEnabled = prefs.getBool('notifications') ?? true;
-        _selectedLanguage = prefs.getString('language') ?? 'Français';
+        _selectedLanguage = savedLanguage;
       });
     } catch (e) {
       print('Erreur lors du chargement des paramètres: $e');
+      setState(() {
+        _selectedLanguage = 'Français';
+      });
     }
   }
 

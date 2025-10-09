@@ -9,6 +9,7 @@ namespace AgricultureAPI.Services
         Task<IEnumerable<Commune>> GetCommunesAsync(string prefectureId);
         Task<IEnumerable<Commune>> GetCommunesByRegionAsync(string regionId);
         Task<SoilType?> GetSoilTypeForCommuneAsync(string communeId);
+        Task<IEnumerable<Crop>> GetCropsAsync();
         Task<IEnumerable<Crop>> GetRecommendedCropsAsync(string soilTypeId);
         Task<Crop?> GetCropAsync(string cropId);
         Task<IEnumerable<CropActivity>> GetUpcomingActivitiesAsync(string cropId, DateTime plantingDate);
