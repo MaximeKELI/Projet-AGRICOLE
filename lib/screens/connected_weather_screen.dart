@@ -1,6 +1,6 @@
-import '../models/weather_data.dart';
+import '../models/weather_data.dart' as models;
 import 'package:flutter/material.dart';
-import '../services/weather_service.dart';
+import '../services/weather_service.dart' as services;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:syncfusion_flutter_charts/charts.dart';
 
@@ -13,13 +13,12 @@ class ConnectedWeatherScreen extends StatefulWidget {
 
 class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
     with TickerProviderStateMixin {
-  final WeatherService _weatherService = WeatherService();
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
-  WeatherData? _currentWeather;
-  WeatherForecast? _forecast;
-  List<WeatherAlert> _alerts = [];
+  services.WeatherData? _currentWeather;
+  List<services.WeatherForecast> _forecast = [];
+  List<services.WeatherAlert> _alerts = [];
   Map<String, dynamic>? _agriculturalData;
   bool _isLoading = true;
   String? _errorMessage;
@@ -72,16 +71,16 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
 
   Future<void> _loadWeatherData(double latitude, double longitude) async {
     try {
-      final currentWeather = await _weatherService.getCurrentWeather(latitude, longitude);
-      final forecast = await _weatherService.getWeatherForecast(latitude, longitude);
-      final alerts = await _weatherService.getWeatherAlerts(latitude, longitude);
-      final agriculturalData = await _weatherService.getAgriculturalWeatherData(latitude, longitude);
+      final currentWeather = await services.WeatherService.getCurrentWeather('$latitude,$longitude');
+      final forecast = await services.WeatherService.getWeatherForecast('$latitude,$longitude');
+      final alerts = await services.WeatherService.getWeatherAlerts('$latitude,$longitude');
+      final agriculturalData = await services.WeatherService.getAgriculturalRecommendations('$latitude,$longitude');
 
       setState(() {
         _currentWeather = currentWeather;
         _forecast = forecast;
         _alerts = alerts;
-        _agriculturalData = agriculturalData;
+        _agriculturalData = {'recommendations': agriculturalData};
         _isLoading = false;
       });
 
@@ -297,7 +296,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
     );
   }
 
-  Widget _buildAlertCard(WeatherAlert alert) {
+  Widget _buildAlertCard(services.WeatherAlert alert) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -322,7 +321,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
                   ),
                 ),
                 Text(
-                  alert.message,
+                  alert.description,
                   style: TextStyle(color: _getSeverityColor(alert.severity).withOpacity(0.7)),
                 ),
                 if (alert.recommendations.isNotEmpty) ...[
@@ -368,25 +367,24 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
             const SizedBox(height: 12),
             _buildAdviceCard(
               'Conditions Actuelles',
-              _currentWeather?.agriculturalAdvice ?? 'Données non disponibles',
+              'Température: ${_currentWeather?.temperature?.toStringAsFixed(1) ?? 'N/A'}°C, Humidité: ${_currentWeather?.humidity?.toStringAsFixed(1) ?? 'N/A'}%',
               Icons.info,
               Colors.blue,
             ),
             const SizedBox(height: 8),
             _buildAdviceCard(
               'Irrigation',
-              _currentWeather?.irrigationAdvice ?? 'Données non disponibles',
+              'Vitesse du vent: ${_currentWeather?.windSpeed?.toStringAsFixed(1) ?? 'N/A'} km/h, Direction: ${_currentWeather?.windDirection ?? 'N/A'}',
               Icons.water_drop,
               Colors.cyan,
             ),
             const SizedBox(height: 8),
-            if (_currentWeather?.diseaseRisk.isNotEmpty == true)
-              _buildAdviceCard(
-                'Risques de Maladies',
-                _currentWeather!.diseaseRisk.join(', '),
-                Icons.warning,
-                Colors.orange,
-              ),
+            _buildAdviceCard(
+              'Risques de Maladies',
+              'UV Index: ${_currentWeather?.uvIndex?.toStringAsFixed(1) ?? 'N/A'}, Pluie: ${_currentWeather?.rainfall?.toStringAsFixed(1) ?? 'N/A'} mm',
+              Icons.warning,
+              Colors.orange,
+            ),
           ],
         ),
       ),
@@ -449,9 +447,9 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
               height: 120,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: _forecast!.dailyForecast.length,
+                itemCount: _forecast.length,
                 itemBuilder: (context, index) {
-                  final day = _forecast!.dailyForecast[index];
+                  final day = _forecast[index];
                   return _buildForecastDay(day);
                 },
               ),
@@ -462,7 +460,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
     );
   }
 
-  Widget _buildForecastDay(WeatherData day) {
+  Widget _buildForecastDay(services.WeatherForecast day) {
     return Container(
       width: 80,
       margin: const EdgeInsets.only(right: 8),
@@ -476,7 +474,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            '${day.timestamp.day}/${day.timestamp.month}',
+            '${day.date.day}/${day.date.month}',
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
@@ -487,7 +485,7 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
           ),
           const SizedBox(height: 4),
           Text(
-            '${day.temperature.toStringAsFixed(0)}°C',
+            '${day.maxTemperature.toStringAsFixed(0)}°C',
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
           Text(
@@ -520,19 +518,19 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
               height: 200,
               child: SfCartesianChart(
                 primaryXAxis: const CategoryAxis(),
-                series: <LineSeries<WeatherData, String>>[
-                  LineSeries<WeatherData, String>(
-                    dataSource: _forecast!.dailyForecast,
-                    xValueMapper: (WeatherData data, _) => '${data.timestamp.day}/${data.timestamp.month}',
-                    yValueMapper: (WeatherData data, _) => data.temperature,
+                series: <LineSeries<services.WeatherForecast, String>>[
+                  LineSeries<services.WeatherForecast, String>(
+                    dataSource: _forecast,
+                    xValueMapper: (services.WeatherForecast data, _) => '${data.date.day}/${data.date.month}',
+                    yValueMapper: (services.WeatherForecast data, _) => data.maxTemperature,
                     name: 'Température',
                     color: Colors.red,
                     markerSettings: const MarkerSettings(isVisible: true),
                   ),
-                  LineSeries<WeatherData, String>(
-                    dataSource: _forecast!.dailyForecast,
-                    xValueMapper: (WeatherData data, _) => '${data.timestamp.day}/${data.timestamp.month}',
-                    yValueMapper: (WeatherData data, _) => data.humidity,
+                  LineSeries<services.WeatherForecast, String>(
+                    dataSource: _forecast,
+                    xValueMapper: (services.WeatherForecast data, _) => '${data.date.day}/${data.date.month}',
+                    yValueMapper: (services.WeatherForecast data, _) => data.humidity,
                     name: 'Humidité',
                     color: Colors.blue,
                     markerSettings: const MarkerSettings(isVisible: true),
@@ -573,9 +571,9 @@ class _ConnectedWeatherScreenState extends State<ConnectedWeatherScreen>
               mainAxisSpacing: 12,
               children: [
                 _buildMetricCard('Pression', '${_currentWeather!.pressure.toStringAsFixed(1)} hPa', Icons.speed),
-                _buildMetricCard('Direction Vent', '${_currentWeather!.windDirection.toStringAsFixed(0)}°', Icons.navigation),
-                _buildMetricCard('Indice de Chaleur', '${_currentWeather!.heatIndex.toStringAsFixed(1)}°C', Icons.thermostat),
-                _buildMetricCard('Point de Rosée', '${_currentWeather!.dewPoint.toStringAsFixed(1)}°C', Icons.water),
+                _buildMetricCard('Direction Vent', '${_currentWeather!.windDirection}°', Icons.navigation),
+                _buildMetricCard('Visibilité', '${_currentWeather!.visibility.toStringAsFixed(1)} km', Icons.visibility),
+                _buildMetricCard('UV Index', '${_currentWeather!.uvIndex.toStringAsFixed(1)}', Icons.wb_sunny),
               ],
             ),
           ],

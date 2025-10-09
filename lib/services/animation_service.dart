@@ -235,6 +235,39 @@ class AnimationService {
       },
     );
   }
+
+  // Animation de néon
+  static Widget createAnimatedNeon({
+    required Widget child,
+    Color glowColor = Colors.cyan,
+    double intensity = 1.0,
+    Duration duration = const Duration(seconds: 2),
+  }) {
+    return TweenAnimationBuilder<double>(
+      duration: duration,
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, _) {
+        final glowIntensity = intensity * (0.5 + 0.5 * math.sin(value * math.pi * 2));
+        return Container(
+          decoration: BoxDecoration(
+            boxShadow: [
+              BoxShadow(
+                color: glowColor.withOpacity(0.8 * glowIntensity),
+                blurRadius: 20 * glowIntensity,
+                spreadRadius: 5 * glowIntensity,
+              ),
+              BoxShadow(
+                color: glowColor.withOpacity(0.4 * glowIntensity),
+                blurRadius: 40 * glowIntensity,
+                spreadRadius: 10 * glowIntensity,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+    );
+  }
 }
 
 class _FloatingParticle extends StatefulWidget {

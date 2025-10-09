@@ -98,10 +98,10 @@ class SyncService {
           'recentCrops': summary.recentCrops.map((crop) => {
             'id': crop.id,
             'cropType': crop.cropType,
-            'area': crop.area,
+            'area': crop.plantedArea,
             'expectedYield': crop.expectedYield,
             'actualYield': crop.actualYield,
-            'efficiency': crop.efficiency,
+            'efficiency': crop.actualYield / crop.expectedYield,
             'region': crop.region,
             'status': crop.status,
           }).toList(),
@@ -317,7 +317,8 @@ class SyncService {
 
   // Obtenir les données hors ligne
   static Future<Map<String, dynamic>?> getOfflineData(String key) async {
-    return await StorageService.getOfflineData()[key];
+    final offlineData = await StorageService.getOfflineData();
+    return offlineData[key];
   }
 
   // Vérifier si les données sont disponibles hors ligne

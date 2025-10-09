@@ -279,7 +279,7 @@ class InventoryService {
     required double quantity,
     required String reason,
     String? reference,
-    String? userId = 'user_001',
+    String userId = 'user_001',
     Map<String, dynamic>? metadata,
   }) async {
     final movement = StockMovement(

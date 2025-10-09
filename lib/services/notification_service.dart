@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
@@ -254,6 +255,7 @@ class NotificationService {
     required DateTime scheduledDate,
     String? payload,
   }) async {
+    final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
     await initialize();
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
@@ -279,10 +281,10 @@ class NotificationService {
       id,
       title,
       body,
-      scheduledDate,
+      tzScheduledDate,
       details,
       payload: payload,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
     );
   }
 
