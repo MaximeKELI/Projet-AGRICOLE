@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
+import 'real_weather_service.dart';
 
 class WeatherData {
   final String location;
@@ -193,6 +194,46 @@ class WeatherService {
 
   // Obtenir la météo actuelle
   static Future<WeatherData> getCurrentWeather(String location) async {
+    try {
+      // Parser les coordonnées si c'est une chaîne de coordonnées
+      double? lat, lon;
+      if (location.contains(',')) {
+        final coords = location.split(',');
+        lat = double.tryParse(coords[0]);
+        lon = double.tryParse(coords[1]);
+      }
+      
+      // Utiliser le service météo réel si on a des coordonnées
+      if (lat != null && lon != null) {
+        final realWeatherData = await RealWeatherService.getCurrentWeather(
+          latitude: lat,
+          longitude: lon,
+        );
+        
+        final weather = WeatherData(
+          location: realWeatherData['location'] ?? location,
+          temperature: realWeatherData['temperature'] ?? 25.0,
+          humidity: realWeatherData['humidity'] ?? 60.0,
+          windSpeed: realWeatherData['windSpeed'] ?? 5.0,
+          windDirection: _getWindDirectionFromDegrees(realWeatherData['windDirection'] ?? 0.0),
+          pressure: realWeatherData['pressure'] ?? 1010.0,
+          visibility: realWeatherData['visibility'] ?? 8.0,
+          condition: realWeatherData['condition'] ?? 'Ensoleillé',
+          description: realWeatherData['description'] ?? 'Conditions normales',
+          uvIndex: realWeatherData['uvIndex'] ?? 5.0,
+          rainfall: realWeatherData['rainfall'] ?? 0.0,
+          timestamp: DateTime.now(),
+        );
+
+        _currentWeather[location] = weather;
+        _weatherController.add(weather);
+        return weather;
+      }
+    } catch (e) {
+      print('Erreur météo réelle: $e');
+    }
+    
+    // Fallback vers données simulées si erreur
     await Future.delayed(const Duration(seconds: 1));
     final random = Random();
 
@@ -213,7 +254,7 @@ class WeatherService {
 
     _currentWeather[location] = weather;
     _weatherController.add(weather);
-        return weather;
+    return weather;
   }
 
   // Obtenir les prévisions météo
@@ -288,6 +329,18 @@ class WeatherService {
   static String _getRandomWindDirection() {
     final directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     return directions[Random().nextInt(directions.length)];
+  }
+
+  static String _getWindDirectionFromDegrees(double degrees) {
+    if (degrees >= 337.5 || degrees < 22.5) return 'N';
+    if (degrees >= 22.5 && degrees < 67.5) return 'NE';
+    if (degrees >= 67.5 && degrees < 112.5) return 'E';
+    if (degrees >= 112.5 && degrees < 157.5) return 'SE';
+    if (degrees >= 157.5 && degrees < 202.5) return 'S';
+    if (degrees >= 202.5 && degrees < 247.5) return 'SW';
+    if (degrees >= 247.5 && degrees < 292.5) return 'W';
+    if (degrees >= 292.5 && degrees < 337.5) return 'NW';
+    return 'N';
   }
 
   static String _getRandomCondition() {

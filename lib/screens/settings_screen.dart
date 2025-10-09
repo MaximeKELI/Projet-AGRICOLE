@@ -148,6 +148,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 if (user.name != null) Divider(height: 1),
                 ListTile(
+                  leading: Icon(Icons.api, color: Colors.orange),
+                  title: Text('Configuration des Clés API'),
+                  subtitle: Text('Configurer les services de données réelles'),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/api-config');
+                  },
+                ),
+                Divider(height: 1),
+                ListTile(
                   leading: Icon(Icons.help, color: Colors.blue),
                   title: Text('Aide et support'),
                   onTap: () {

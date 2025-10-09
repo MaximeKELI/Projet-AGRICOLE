@@ -15,7 +15,9 @@ import 'package:app_agrigeo/screens/about_us_screen.dart';
 import 'package:app_agrigeo/screens/settings_screen.dart';
 import 'package:app_agrigeo/screens/documents_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_agrigeo/screens/api_config_screen.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
+import 'package:app_agrigeo/services/api_diagnostic_service.dart';
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
 void main() async {
@@ -58,6 +60,13 @@ void main() async {
     }
   } catch (e) {
     print("Erreur Firebase: $e");
+  }
+
+  // Diagnostic des clés API au démarrage
+  try {
+    await ApiDiagnosticService.printDiagnosticReport();
+  } catch (e) {
+    print("Erreur diagnostic API: $e");
   }
 
   runApp(
@@ -128,6 +137,7 @@ class AgriGeoApp extends StatelessWidget {
         '/about': (context) => const AboutUsScreen(),
         '/main': (context) => MainScreen(),
         '/settings': (context) => SettingsScreen(),
+        '/api-config': (context) => ApiConfigScreen(),
       },
     );
   }

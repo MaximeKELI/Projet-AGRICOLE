@@ -14,6 +14,7 @@ import '../services/graphics_service.dart';
 import '../services/analytics_service.dart';
 import '../services/inventory_service.dart';
 import '../services/animation_service.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/agricultural_metrics.dart';
 import '../services/agricultural_service.dart';
 import '../services/notification_service.dart';
@@ -463,27 +464,148 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
 
   Future<void> _loadWeatherData() async {
     try {
-      // Simulation de données météo (remplacer par une vraie API météo)
-      await Future.delayed(const Duration(seconds: 1));
+      // Obtenir la localisation actuelle
+      final location = await _getCurrentLocation();
+      if (location == null) {
+        // Fallback vers une localisation par défaut (Lomé, Togo)
+        await _loadWeatherForDefaultLocation();
+        return;
+      }
+
+      // Charger les données météo réelles
+      final currentWeather = await WeatherService.getCurrentWeather(location);
+      final forecast = await WeatherService.getWeatherForecast(location);
+      final alerts = await WeatherService.getWeatherAlerts(location);
+      final recommendations = await WeatherService.getAgriculturalRecommendations(location);
+
       setState(() {
         _weatherData = {
-          'temperature': 28.5,
-          'humidity': 65,
-          'windSpeed': 12.3,
-          'condition': 'Ensoleillé',
-          'forecast': [
-            {'day': 'Aujourd\'hui', 'temp': 28, 'condition': 'Ensoleillé', 'icon': '☀️'},
-            {'day': 'Demain', 'temp': 26, 'condition': 'Nuageux', 'icon': '⛅'},
-            {'day': 'Après-demain', 'temp': 24, 'condition': 'Pluie', 'icon': '🌧️'},
-          ],
-          'alerts': [
-            {'type': 'warning', 'message': 'Risque de pluie dans 2 jours', 'severity': 'medium'},
-            {'type': 'info', 'message': 'Conditions optimales pour la plantation', 'severity': 'low'},
-          ]
+          'temperature': currentWeather.temperature,
+          'humidity': currentWeather.humidity,
+          'windSpeed': currentWeather.windSpeed,
+          'condition': currentWeather.condition,
+          'location': currentWeather.location,
+          'forecast': forecast.take(3).map((f) => {
+            'day': _getDayName(f.date),
+            'temp': f.maxTemperature,
+            'condition': f.condition,
+            'icon': _getWeatherIcon(f.condition),
+          }).toList(),
+          'alerts': alerts.map((a) => {
+            'type': a.type,
+            'message': a.description,
+            'severity': a.severity,
+          }).toList(),
+          'recommendations': recommendations,
         };
       });
     } catch (e) {
       print('Erreur chargement météo: $e');
+      // Fallback vers des données par défaut
+      await _loadWeatherForDefaultLocation();
+    }
+  }
+
+  Future<String?> _getCurrentLocation() async {
+    try {
+      // Vérifier si les services de localisation sont activés
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('Services de localisation désactivés');
+        return null;
+      }
+
+      // Vérifier les permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('Permission de localisation refusée');
+          return null;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('Permission de localisation définitivement refusée');
+        return null;
+      }
+
+      // Obtenir la position actuelle
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 10),
+      );
+
+      return '${position.latitude},${position.longitude}';
+    } catch (e) {
+      print('Erreur géolocalisation: $e');
+      return null;
+    }
+  }
+
+  Future<void> _loadWeatherForDefaultLocation() async {
+    // Localisation par défaut : Lomé, Togo
+    const defaultLocation = '6.1725,1.2314';
+    
+    try {
+      final currentWeather = await WeatherService.getCurrentWeather(defaultLocation);
+      final forecast = await WeatherService.getWeatherForecast(defaultLocation);
+      final alerts = await WeatherService.getWeatherAlerts(defaultLocation);
+      final recommendations = await WeatherService.getAgriculturalRecommendations(defaultLocation);
+
+      setState(() {
+        _weatherData = {
+          'temperature': currentWeather.temperature,
+          'humidity': currentWeather.humidity,
+          'windSpeed': currentWeather.windSpeed,
+          'condition': currentWeather.condition,
+          'location': 'Lomé, Togo',
+          'forecast': forecast.take(3).map((f) => {
+            'day': _getDayName(f.date),
+            'temp': f.maxTemperature,
+            'condition': f.condition,
+            'icon': _getWeatherIcon(f.condition),
+          }).toList(),
+          'alerts': alerts.map((a) => {
+            'type': a.type,
+            'message': a.description,
+            'severity': a.severity,
+          }).toList(),
+          'recommendations': recommendations,
+        };
+      });
+    } catch (e) {
+      print('Erreur chargement météo par défaut: $e');
+    }
+  }
+
+  String _getDayName(DateTime date) {
+    final now = DateTime.now();
+    final difference = date.difference(now).inDays;
+    
+    if (difference == 0) return 'Aujourd\'hui';
+    if (difference == 1) return 'Demain';
+    if (difference == 2) return 'Après-demain';
+    
+    return '${date.day}/${date.month}';
+  }
+
+  String _getWeatherIcon(String condition) {
+    switch (condition.toLowerCase()) {
+      case 'ensoleillé':
+      case 'sunny':
+        return '☀️';
+      case 'nuageux':
+      case 'cloudy':
+        return '⛅';
+      case 'pluie':
+      case 'rain':
+        return '🌧️';
+      case 'orage':
+      case 'storm':
+        return '⛈️';
+      default:
+        return '🌤️';
     }
   }
 
