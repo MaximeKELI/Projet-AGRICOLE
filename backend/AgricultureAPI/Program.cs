@@ -33,12 +33,14 @@ builder.Services.AddScoped<IWeatherAlertRepository, WeatherAlertRepository>();
 builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAgriculturalMetricsRepository, AgriculturalMetricsRepository>();
 
 // Register services
 builder.Services.AddScoped<IAgricultureService, AgricultureService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IAgriculturalMetricsService, AgriculturalMetricsService>();
 
 // Configure CORS
 builder.Services.AddCors(options =>

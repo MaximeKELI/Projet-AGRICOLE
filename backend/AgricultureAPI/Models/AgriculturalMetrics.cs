@@ -15,101 +15,90 @@ namespace AgricultureAPI.Models
         public string CropType { get; set; } = string.Empty;
         
         [Required]
-        [MaxLength(100)]
-        public string Region { get; set; } = string.Empty;
+        [MaxLength(200)]
+        public string FieldLocation { get; set; } = string.Empty;
         
         [Required]
-        public double PlantedArea { get; set; } // en hectares
+        public double FieldSize { get; set; } // en hectares
         
         [Required]
-        public double ExpectedYield { get; set; } // en tonnes
-        
-        public double ActualYield { get; set; } = 0.0; // en tonnes
+        public double Yield { get; set; } // en tonnes
         
         [Required]
-        public double TotalCost { get; set; } // en FCFA
-        
-        public double Revenue { get; set; } = 0.0; // en FCFA
-        
-        public double Profit { get; set; } = 0.0; // en FCFA
+        public double YieldPerHectare => FieldSize > 0 ? Yield / FieldSize : 0;
         
         [Required]
         public DateTime PlantingDate { get; set; }
         
-        public DateTime? HarvestDate { get; set; }
+        [Required]
+        public DateTime HarvestDate { get; set; }
         
         [Required]
-        [MaxLength(50)]
-        public string Status { get; set; } = "planted"; // planted, growing, ready_to_harvest, harvested
+        public double WaterUsage { get; set; } // en litres
         
-        public string WeatherData { get; set; } = "{}"; // JSON string
+        [Required]
+        public double FertilizerUsage { get; set; } // en kg
         
-        public string SoilData { get; set; } = "{}"; // JSON string
+        [Required]
+        public double PesticideUsage { get; set; } // en litres
         
+        [Required]
+        public double LaborHours { get; set; }
+        
+        [Required]
+        public double Cost { get; set; } // en francs CFA
+        
+        [Required]
+        public double Revenue { get; set; } // en francs CFA
+        
+        public double Profit => Revenue - Cost;
+        
+        public double ProfitPerHectare => FieldSize > 0 ? Profit / FieldSize : 0;
+        
+        public double CostPerHectare => FieldSize > 0 ? Cost / FieldSize : 0;
+        
+        [MaxLength(1000)]
+        public string Notes { get; set; } = string.Empty;
+        
+        [Required]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         
+        [Required]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        
-        // Propriétés calculées
-        public double YieldPerHectare => PlantedArea > 0 ? ActualYield / PlantedArea : 0.0;
-        
-        public double ExpectedYieldPerHectare => PlantedArea > 0 ? ExpectedYield / PlantedArea : 0.0;
-        
-        public double ProfitPerHectare => PlantedArea > 0 ? Profit / PlantedArea : 0.0;
-        
-        public double CostPerHectare => PlantedArea > 0 ? TotalCost / PlantedArea : 0.0;
-        
-        public double RevenuePerHectare => PlantedArea > 0 ? Revenue / PlantedArea : 0.0;
-        
-        public double YieldEfficiency => ExpectedYield > 0 ? (ActualYield / ExpectedYield) * 100 : 0.0;
-        
-        public double ProfitMargin => Revenue > 0 ? (Profit / Revenue) * 100 : 0.0;
-        
-        public int GrowthDays => (DateTime.Now - PlantingDate).Days;
-        
-        public int DaysToHarvest
-        {
-            get
-            {
-                if (HarvestDate.HasValue)
-                    return (HarvestDate.Value - DateTime.Now).Days;
-                
-                // Estimation basée sur le type de culture
-                var cropDays = GetCropGrowthDays(CropType);
-                return cropDays - GrowthDays;
-            }
-        }
-        
-        private int GetCropGrowthDays(string crop)
-        {
-            return crop.ToLower() switch
-            {
-                "maïs" or "mais" => 90,
-                "riz" => 120,
-                "arachide" => 100,
-                "manioc" => 300,
-                "igname" => 180,
-                "tomate" => 75,
-                "piment" => 80,
-                "gombo" => 60,
-                _ => 90
-            };
-        }
     }
 
     public class DashboardSummary
     {
-        public int TotalCrops { get; set; }
+        public int TotalFields { get; set; }
         public double TotalArea { get; set; }
-        public double TotalExpectedYield { get; set; }
-        public double TotalActualYield { get; set; }
+        public double TotalYield { get; set; }
+        public double AverageYieldPerHectare { get; set; }
+        public double TotalRevenue { get; set; }
+        public double TotalCost { get; set; }
+        public double TotalProfit { get; set; }
+        public double AverageProfitPerHectare { get; set; }
+        public List<CropSummary> CropSummaries { get; set; } = new();
+        public List<MonthlyMetrics> MonthlyTrends { get; set; } = new();
+    }
+
+    public class CropSummary
+    {
+        public string CropType { get; set; } = string.Empty;
+        public int FieldCount { get; set; }
+        public double TotalArea { get; set; }
+        public double TotalYield { get; set; }
+        public double AverageYieldPerHectare { get; set; }
         public double TotalRevenue { get; set; }
         public double TotalProfit { get; set; }
+    }
+
+    public class MonthlyMetrics
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public double TotalYield { get; set; }
+        public double TotalRevenue { get; set; }
         public double TotalCost { get; set; }
-        public double AverageYieldEfficiency { get; set; }
-        public double AverageProfitMargin { get; set; }
-        public List<AgriculturalMetrics> RecentCrops { get; set; } = new();
-        public Dictionary<string, double> CropsByType { get; set; } = new();
-        public Dictionary<string, double> RevenueByRegion { get; set; } = new();
+        public double TotalProfit { get; set; }
     }
 }

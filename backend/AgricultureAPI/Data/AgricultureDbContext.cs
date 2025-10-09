@@ -22,6 +22,7 @@ namespace AgricultureAPI.Data
         public DbSet<DocumentRecommendation> DocumentRecommendations { get; set; }
         public DbSet<Payment> Payments { get; set; }
         public DbSet<UserPurchase> UserPurchases { get; set; }
+        public DbSet<AgriculturalMetrics> AgriculturalMetrics { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
