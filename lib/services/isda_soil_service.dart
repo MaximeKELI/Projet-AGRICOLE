@@ -319,8 +319,8 @@ class IsdaSoilService {
       return {'suitability': 'unknown', 'reason': 'Culture non reconnue'};
     }
 
-    bool phSuitable = ph == null || (ph >= crop['ph_min'] && ph <= crop['ph_max']);
-    bool claySuitable = clay == null || (clay >= crop['clay_min'] && clay <= crop['clay_max']);
+    bool phSuitable = ph == null || (ph >= crop['ph_min']! && ph <= crop['ph_max']!);
+    bool claySuitable = clay == null || (clay >= crop['clay_min']! && clay <= crop['clay_max']!);
 
     if (phSuitable && claySuitable) {
       return {'suitability': 'excellent', 'reason': 'Conditions optimales'};

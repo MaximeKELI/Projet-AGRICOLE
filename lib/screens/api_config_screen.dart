@@ -40,7 +40,7 @@ class _ApiConfigScreenState extends State<ApiConfigScreen> {
   Future<void> _loadDiagnostic() async {
     setState(() => _isLoading = true);
     try {
-      final results = await ApiDiagnosticService.diagnoseAllApis();
+      final results = await ApiDiagnosticService.performFullDiagnostic();
       setState(() {
         _diagnosticResults = results;
         _isLoading = false;

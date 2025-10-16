@@ -64,6 +64,8 @@ dependencies:
   sqflite_common_ffi: ^2.3.3
   path: ^1.9.0
   crypto: ^3.0.6
+  encrypt: ^5.0.1
+  pointycastle: ^3.7.3
 
   # 🔔 Notifications
   flutter_local_notifications: ^19.0.0

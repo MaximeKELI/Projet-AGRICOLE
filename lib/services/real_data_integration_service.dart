@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'real_soil_service.dart';
 import 'satellite_service.dart';
-import 'isda_soil_service.dart';
+import '../config/api_keys.dart';
 import 'real_weather_service.dart';
 import 'package:http/http.dart' as http;
 import 'togo_agricultural_data_service.dart';
 
-/// Service d'intégration de toutes les données réelles
-/// Combine météo, sols, satellites et données agricoles du Togo
+/// Service d'intégration des données réelles
+/// Combine toutes les sources de données pour une analyse complète
 class RealDataIntegrationService {
   
   /// Obtenir une analyse complète pour une localisation
@@ -17,118 +17,42 @@ class RealDataIntegrationService {
     double radiusKm = 5.0,
   }) async {
     try {
-      // Obtenir toutes les données en parallèle
+      print('🌍 Début de l\'analyse complète pour: $latitude, $longitude');
+      
+      // Récupérer toutes les données en parallèle
       final results = await Future.wait([
-        RealWeatherService.getCurrentWeather(
-          latitude: latitude,
-          longitude: longitude,
-        ),
-        RealWeatherService.getWeatherForecast(
-          latitude: latitude,
-          longitude: longitude,
-          days: 7,
-        ),
-        RealWeatherService.getWeatherAlerts(
-          latitude: latitude,
-          longitude: longitude,
-        ),
-        _getBestSoilData(
-          latitude: latitude,
-          longitude: longitude,
-        ),
-        SatelliteService.getNDVIData(
-          latitude: latitude,
-          longitude: longitude,
-          radiusKm: radiusKm,
-        ),
-        SatelliteService.getLandSurfaceTemperature(
-          latitude: latitude,
-          longitude: longitude,
-          radiusKm: radiusKm,
-        ),
-        SatelliteService.getSoilMoisture(
-          latitude: latitude,
-          longitude: longitude,
-          radiusKm: radiusKm,
-        ),
-        TogoAgriculturalDataService.getProductionData(),
-        TogoAgriculturalDataService.getMarketPrices(),
-        TogoAgriculturalDataService.getHistoricalWeatherData(
-          latitude: latitude,
-          longitude: longitude,
-          year: DateTime.now().year,
-        ),
+        _getWeatherData(latitude, longitude),
+        _getSoilData(latitude, longitude),
+        _getAgriculturalData(latitude, longitude),
+        _getSatelliteData(latitude, longitude, radiusKm),
+        _getMarketData(latitude, longitude),
+        _getHistoricalData(latitude, longitude),
       ]);
-
+      
       final weatherData = results[0] as Map<String, dynamic>;
-      final forecastData = results[1] as List<Map<String, dynamic>>;
-      final alertsData = results[2] as List<Map<String, dynamic>>;
-      final soilData = results[3] as Map<String, dynamic>;
-      final ndviData = results[4] as Map<String, dynamic>;
-      final lstData = results[5] as Map<String, dynamic>;
-      final moistureData = results[6] as Map<String, dynamic>;
-      final productionData = results[7] as Map<String, dynamic>;
-      final marketData = results[8] as Map<String, dynamic>;
-      final historicalWeather = results[9] as Map<String, dynamic>;
-
-      // Obtenir les recommandations de cultures
-      final cropRecommendations = await RealSoilService.getCropRecommendations(
-        latitude: latitude,
-        longitude: longitude,
-        soilData: soilData,
+      final soilData = results[1] as Map<String, dynamic>;
+      final agriculturalData = results[2] as Map<String, dynamic>;
+      final satelliteData = results[3] as Map<String, dynamic>;
+      final marketData = results[4] as Map<String, dynamic>;
+      final historicalData = results[5] as Map<String, dynamic>;
+      
+      // Analyser et combiner les données
+      final analysis = _analyzeAndCombineData(
+        weatherData,
+        soilData,
+        agriculturalData,
+        satelliteData,
+        marketData,
+        historicalData,
+        latitude,
+        longitude,
       );
-
-      // Analyser la santé des cultures
-      final cropHealth = await SatelliteService.analyzeCropHealth(
-        latitude: latitude,
-        longitude: longitude,
-        radiusKm: radiusKm,
-      );
-
-      // Obtenir les recommandations agricoles
-      final agriculturalRecommendations = await TogoAgriculturalDataService.getAgriculturalRecommendations(
-        latitude: latitude,
-        longitude: longitude,
-        season: _getCurrentSeason(),
-      );
-
-      // Compiler l'analyse complète
-      return {
-        'location': {
-          'latitude': latitude,
-          'longitude': longitude,
-          'region': _getTogoRegion(latitude),
-          'radiusKm': radiusKm,
-        },
-        'weather': {
-          'current': weatherData,
-          'forecast': forecastData,
-          'alerts': alertsData,
-          'historical': historicalWeather,
-        },
-        'soil': soilData,
-        'satellite': {
-          'ndvi': ndviData,
-          'landSurfaceTemperature': lstData,
-          'soilMoisture': moistureData,
-          'cropHealth': cropHealth,
-        },
-        'agriculture': {
-          'production': productionData,
-          'market': marketData,
-          'cropRecommendations': cropRecommendations,
-          'recommendations': agriculturalRecommendations,
-        },
-        'analysis': _generateComprehensiveAnalysis(
-          weatherData, soilData, ndviData, lstData, moistureData,
-          cropHealth, cropRecommendations, agriculturalRecommendations,
-        ),
-        'timestamp': DateTime.now().toIso8601String(),
-        'dataSources': _getDataSources(),
-      };
-
+      
+      print('✅ Analyse complète terminée');
+      return analysis;
+      
     } catch (e) {
-      print('Erreur analyse complète: $e');
+      print('❌ Erreur lors de l\'analyse complète: $e');
       return _getFallbackAnalysis(latitude, longitude);
     }
   }
@@ -137,526 +61,835 @@ class RealDataIntegrationService {
   static Future<List<Map<String, dynamic>>> getPersonalizedRecommendations({
     required double latitude,
     required double longitude,
-    required String userProfile,
-    required List<String> userCrops,
+    required String userType, // 'FARMER', 'COOPERATIVE', 'INVESTOR', 'RESEARCHER'
+    required List<String> interests, // ['CROPS', 'LIVESTOCK', 'MARKETING', 'TECHNOLOGY']
   }) async {
     try {
-      // Obtenir l'analyse complète
       final analysis = await getCompleteAnalysis(
         latitude: latitude,
         longitude: longitude,
       );
-
-      // Générer des recommandations personnalisées
+      
       final recommendations = <Map<String, dynamic>>[];
-
-      // Recommandations basées sur le profil utilisateur
-      if (userProfile == 'débutant') {
-        recommendations.addAll(_getBeginnerRecommendations(analysis));
-      } else if (userProfile == 'expérimenté') {
-        recommendations.addAll(_getExperiencedRecommendations(analysis));
-      } else {
-        recommendations.addAll(_getProfessionalRecommendations(analysis));
-      }
-
-      // Recommandations basées sur les cultures de l'utilisateur
-      for (String crop in userCrops) {
-        recommendations.addAll(_getCropSpecificRecommendations(crop, analysis));
-      }
-
-      // Recommandations basées sur les conditions actuelles
-      recommendations.addAll(_getConditionBasedRecommendations(analysis));
-
-      // Trier par priorité et impact
+      
+      // Recommandations basées sur le type d'utilisateur
+      recommendations.addAll(_getUserTypeRecommendations(userType, analysis));
+      
+      // Recommandations basées sur les intérêts
+      recommendations.addAll(_getInterestBasedRecommendations(interests, analysis));
+      
+      // Recommandations basées sur l'analyse des données
+      recommendations.addAll(_getDataBasedRecommendations(analysis));
+      
+      // Trier par priorité et pertinence
       recommendations.sort((a, b) {
         final priorityA = _getPriorityValue(a['priority']);
         final priorityB = _getPriorityValue(b['priority']);
-        if (priorityA != priorityB) return priorityB.compareTo(priorityA);
-        
-        final impactA = _getImpactValue(a['impact']);
-        final impactB = _getImpactValue(b['impact']);
-        return impactB.compareTo(impactA);
+        return priorityB.compareTo(priorityA);
       });
-
-      return recommendations.take(10).toList();
-
+      
+      return recommendations;
+      
     } catch (e) {
-      print('Erreur recommandations personnalisées: $e');
-      return _getBasicRecommendations();
+      print('❌ Erreur recommandations personnalisées: $e');
+      return [];
     }
   }
 
-  /// Obtenir les alertes agricoles
-  static Future<List<Map<String, dynamic>>> getAgriculturalAlerts({
+  /// Obtenir les alertes et notifications
+  static Future<List<Map<String, dynamic>>> getAlertsAndNotifications({
     required double latitude,
     required double longitude,
   }) async {
     try {
       final alerts = <Map<String, dynamic>>[];
-
-      // Alertes météo
+      
+      // Alertes météorologiques
       final weatherAlerts = await RealWeatherService.getWeatherAlerts(
         latitude: latitude,
         longitude: longitude,
       );
       alerts.addAll(weatherAlerts.map((alert) => {
-        'type': 'weather',
-        'severity': alert['severity'],
-        'title': alert['title'] ?? 'Alerte météo',
-        'message': alert['message'] ?? alert['description'],
-        'startTime': alert['startTime'],
-        'endTime': alert['endTime'],
-        'recommendations': alert['recommendations'] ?? [],
+        ...alert,
+        'type': 'WEATHER',
+        'severity': _mapWeatherSeverity(alert['severity']),
       }));
-
-      // Alertes de santé des cultures
-      final cropHealth = await SatelliteService.analyzeCropHealth(
-        latitude: latitude,
-        longitude: longitude,
-        radiusKm: 5.0,
-      );
       
-      if (cropHealth['healthScore'] < 0.5) {
-        alerts.add({
-          'type': 'crop_health',
-          'severity': 'high',
-          'title': 'Santé des cultures dégradée',
-          'message': 'Les cultures montrent des signes de stress. Action recommandée.',
-          'recommendations': cropHealth['recommendations'] ?? [],
-        });
-      }
-
-      // Alertes de sécheresse
-      final soilMoisture = await SatelliteService.getSoilMoisture(
-        latitude: latitude,
-        longitude: longitude,
-        radiusKm: 5.0,
-      );
+      // Alertes de marché
+      final marketAlerts = await _getMarketAlerts(latitude, longitude);
+      alerts.addAll(marketAlerts);
       
-      if (soilMoisture['droughtRisk'] == 'Élevé') {
-        alerts.add({
-          'type': 'drought',
-          'severity': 'high',
-          'title': 'Risque de sécheresse',
-          'message': 'L\'humidité du sol est faible. Irrigation recommandée.',
-          'recommendations': [
-            'Augmenter la fréquence d\'irrigation',
-            'Utiliser du paillage pour conserver l\'humidité',
-            'Surveiller les signes de stress hydrique',
-          ],
-        });
-      }
-
-      // Alertes de température
-      final lst = await SatelliteService.getLandSurfaceTemperature(
-        latitude: latitude,
-        longitude: longitude,
-        radiusKm: 5.0,
-      );
+      // Alertes agricoles
+      final agriculturalAlerts = await _getAgriculturalAlerts(latitude, longitude);
+      alerts.addAll(agriculturalAlerts);
       
-      if (lst['heatStress'] == 'Élevé') {
-        alerts.add({
-          'type': 'heat_stress',
-          'severity': 'medium',
-          'title': 'Stress thermique',
-          'message': 'Les températures élevées peuvent affecter les cultures.',
-          'recommendations': [
-            'Augmenter l\'irrigation',
-            'Utiliser de l\'ombrage si possible',
-            'Surveiller les signes de stress thermique',
-          ],
-        });
-      }
-
+      // Alertes de sol
+      final soilAlerts = await _getSoilAlerts(latitude, longitude);
+      alerts.addAll(soilAlerts);
+      
+      // Trier par sévérité et date
+      alerts.sort((a, b) {
+        final severityA = _getSeverityValue(a['severity']);
+        final severityB = _getSeverityValue(b['severity']);
+        if (severityA != severityB) return severityB.compareTo(severityA);
+        return b['timestamp'].compareTo(a['timestamp']);
+      });
+      
       return alerts;
-
+      
     } catch (e) {
-      print('Erreur alertes agricoles: $e');
+      print('❌ Erreur alertes: $e');
       return [];
     }
   }
 
-  /// Générer une analyse complète
-  static Map<String, dynamic> _generateComprehensiveAnalysis(
-    Map<String, dynamic> weatherData,
-    Map<String, dynamic> soilData,
-    Map<String, dynamic> ndviData,
-    Map<String, dynamic> lstData,
-    Map<String, dynamic> moistureData,
-    Map<String, dynamic> cropHealth,
-    List<Map<String, dynamic>> cropRecommendations,
-    List<Map<String, dynamic>> agriculturalRecommendations,
-  ) {
-    // Calculer un score de santé global
-    double healthScore = 0.0;
-    int factors = 0;
-
-    // Facteur météo (25%)
-    final weatherScore = _calculateWeatherScore(weatherData);
-    healthScore += weatherScore * 0.25;
-    factors++;
-
-    // Facteur sol (25%)
-    final soilScore = _calculateSoilScore(soilData);
-    healthScore += soilScore * 0.25;
-    factors++;
-
-    // Facteur végétation (25%)
-    final vegetationScore = _calculateVegetationScore(ndviData, cropHealth);
-    healthScore += vegetationScore * 0.25;
-    factors++;
-
-    // Facteur humidité (25%)
-    final moistureScore = _calculateMoistureScore(moistureData);
-    healthScore += moistureScore * 0.25;
-    factors++;
-
-    final overallHealthScore = factors > 0 ? healthScore / factors : 0.0;
-
-    return {
-      'overallHealthScore': overallHealthScore,
-      'healthStatus': _getHealthStatus(overallHealthScore),
-      'weatherScore': weatherScore,
-      'soilScore': soilScore,
-      'vegetationScore': vegetationScore,
-      'moistureScore': moistureScore,
-      'topCrops': cropRecommendations.take(5).toList(),
-      'keyRecommendations': agriculturalRecommendations.take(3).toList(),
-      'riskFactors': _identifyRiskFactors(weatherData, soilData, moistureData, lstData),
-      'opportunities': _identifyOpportunities(cropRecommendations, weatherData),
-    };
-  }
-
-  // Méthodes de calcul des scores
-  static double _calculateWeatherScore(Map<String, dynamic> weatherData) {
-    double score = 0.5; // Score de base
-    
-    final temp = weatherData['temperature'] ?? 25.0;
-    final humidity = weatherData['humidity'] ?? 60.0;
-    final rainfall = weatherData['rainfall'] ?? 0.0;
-    
-    // Score basé sur la température (optimal: 20-30°C)
-    if (temp >= 20.0 && temp <= 30.0) {
-      score += 0.3;
-    } else if (temp >= 15.0 && temp <= 35.0) {
-      score += 0.2;
-    }
-    
-    // Score basé sur l'humidité (optimal: 60-80%)
-    if (humidity >= 60.0 && humidity <= 80.0) {
-      score += 0.2;
-    } else if (humidity >= 40.0 && humidity <= 90.0) {
-      score += 0.1;
-    }
-    
-    return score.clamp(0.0, 1.0);
-  }
-
-  static double _calculateSoilScore(Map<String, dynamic> soilData) {
-    double score = 0.5; // Score de base
-    
-    final ph = soilData['ph'] ?? 6.5;
-    final organicMatter = soilData['organicMatter'] ?? 2.0;
-    final fertility = soilData['fertility'] ?? 'medium';
-    
-    // Score basé sur le pH (optimal: 6.0-7.5)
-    if (ph >= 6.0 && ph <= 7.5) {
-      score += 0.3;
-    } else if (ph >= 5.5 && ph <= 8.0) {
-      score += 0.2;
-    }
-    
-    // Score basé sur la matière organique
-    if (organicMatter >= 3.0) {
-      score += 0.2;
-    } else if (organicMatter >= 2.0) {
-      score += 0.1;
-    }
-    
-    // Score basé sur la fertilité
-    if (fertility == 'élevée') {
-      score += 0.2;
-    } else if (fertility == 'moyenne') {
-      score += 0.1;
-    }
-    
-    return score.clamp(0.0, 1.0);
-  }
-
-  static double _calculateVegetationScore(Map<String, dynamic> ndviData, Map<String, dynamic> cropHealth) {
-    double score = 0.5; // Score de base
-    
-    final ndvi = ndviData['ndvi'] ?? 0.6;
-    final healthScore = cropHealth['healthScore'] ?? 0.7;
-    
-    // Score basé sur NDVI
-    if (ndvi >= 0.7) {
-      score += 0.3;
-    } else if (ndvi >= 0.5) {
-      score += 0.2;
-    } else if (ndvi >= 0.3) {
-      score += 0.1;
-    }
-    
-    // Score basé sur la santé des cultures
-    score += healthScore * 0.2;
-    
-    return score.clamp(0.0, 1.0);
-  }
-
-  static double _calculateMoistureScore(Map<String, dynamic> moistureData) {
-    double score = 0.5; // Score de base
-    
-    final moisture = moistureData['soilMoisture'] ?? 0.3;
-    final droughtRisk = moistureData['droughtRisk'] ?? 'Faible';
-    
-    // Score basé sur l'humidité du sol
-    if (moisture >= 0.4) {
-      score += 0.3;
-    } else if (moisture >= 0.3) {
-      score += 0.2;
-    } else if (moisture >= 0.2) {
-      score += 0.1;
-    }
-    
-    // Score basé sur le risque de sécheresse
-    if (droughtRisk == 'Très faible') {
-      score += 0.2;
-    } else if (droughtRisk == 'Faible') {
-      score += 0.1;
-    }
-    
-    return score.clamp(0.0, 1.0);
-  }
-
-  // Méthodes utilitaires
-  static String _getHealthStatus(double score) {
-    if (score >= 0.8) return 'Excellente';
-    if (score >= 0.6) return 'Bonne';
-    if (score >= 0.4) return 'Moyenne';
-    return 'Faible';
-  }
-
-  static List<String> _identifyRiskFactors(
-    Map<String, dynamic> weatherData,
-    Map<String, dynamic> soilData,
-    Map<String, dynamic> moistureData,
-    Map<String, dynamic> lstData,
-  ) {
-    final risks = <String>[];
-    
-    final temp = weatherData['temperature'] ?? 25.0;
-    final humidity = weatherData['humidity'] ?? 60.0;
-    final moisture = moistureData['soilMoisture'] ?? 0.3;
-    final lst = lstData['landSurfaceTemperature'] ?? 30.0;
-    
-    if (temp > 35.0) risks.add('Températures élevées');
-    if (temp < 15.0) risks.add('Températures basses');
-    if (humidity < 40.0) risks.add('Humidité faible');
-    if (moisture < 0.2) risks.add('Sécheresse');
-    if (lst > 40.0) risks.add('Stress thermique');
-    
-    return risks;
-  }
-
-  static List<String> _identifyOpportunities(
-    List<Map<String, dynamic>> cropRecommendations,
-    Map<String, dynamic> weatherData,
-  ) {
-    final opportunities = <String>[];
-    
-    if (cropRecommendations.isNotEmpty) {
-      final topCrop = cropRecommendations.first;
-      opportunities.add('Culture recommandée: ${topCrop['crop']}');
-      opportunities.add('Rendement estimé: ${topCrop['estimatedYield']} tonnes/ha');
-    }
-    
-    final temp = weatherData['temperature'] ?? 25.0;
-    if (temp >= 20.0 && temp <= 30.0) {
-      opportunities.add('Conditions météo optimales');
-    }
-    
-    return opportunities;
-  }
-
-  static String _getCurrentSeason() {
-    final month = DateTime.now().month;
-    if (month >= 3 && month <= 6) return 'grande_saison';
-    if (month >= 9 && month <= 11) return 'petite_saison';
-    return 'saison_seche';
-  }
-
-  static String _getTogoRegion(double latitude) {
-    if (latitude > 8.5) return 'Kara';
-    if (latitude > 7.5) return 'Centrale';
-    if (latitude > 6.5) return 'Plateaux';
-    return 'Maritime';
-  }
-
-  static List<String> _getDataSources() {
-    return [
-      'OpenWeatherMap',
-      'WeatherAPI',
-      'WeatherBit',
-      'ISRIC SoilGrids',
-      'SolGRID',
-      'FAO',
-      'Sentinel Hub',
-      'Landsat',
-      'GPM',
-      'Ministère de l\'Agriculture du Togo',
-    ];
-  }
-
-  // Méthodes de recommandations
-  static List<Map<String, dynamic>> _getBeginnerRecommendations(Map<String, dynamic> analysis) {
-    return [
-      {
-        'type': 'general',
-        'title': 'Commencez par des cultures faciles',
-        'description': 'Choisissez des cultures résistantes comme le manioc ou l\'igname.',
-        'priority': 'high',
-        'impact': 'Élevé',
-        'effort': 'Faible',
-      },
-      {
-        'type': 'soil',
-        'title': 'Améliorez votre sol',
-        'description': 'Ajoutez du compost pour enrichir votre sol.',
-        'priority': 'high',
-        'impact': 'Élevé',
-        'effort': 'Moyen',
-      },
-    ];
-  }
-
-  static List<Map<String, dynamic>> _getExperiencedRecommendations(Map<String, dynamic> analysis) {
-    return [
-      {
-        'type': 'optimization',
-        'title': 'Optimisez vos rendements',
-        'description': 'Utilisez des techniques avancées pour maximiser vos rendements.',
-        'priority': 'high',
-        'impact': 'Élevé',
-        'effort': 'Élevé',
-      },
-    ];
-  }
-
-  static List<Map<String, dynamic>> _getProfessionalRecommendations(Map<String, dynamic> analysis) {
-    return [
-      {
-        'type': 'technology',
-        'title': 'Intégrez la technologie',
-        'description': 'Utilisez des capteurs IoT et l\'IA pour optimiser vos cultures.',
-        'priority': 'high',
-        'impact': 'Très élevé',
-        'effort': 'Très élevé',
-      },
-    ];
-  }
-
-  static List<Map<String, dynamic>> _getCropSpecificRecommendations(String crop, Map<String, dynamic> analysis) {
-    return [
-      {
-        'type': 'crop_specific',
-        'title': 'Optimisation pour $crop',
-        'description': 'Recommandations spécifiques pour la culture du $crop.',
-        'priority': 'medium',
-        'impact': 'Moyen',
-        'effort': 'Moyen',
-      },
-    ];
-  }
-
-  static List<Map<String, dynamic>> _getConditionBasedRecommendations(Map<String, dynamic> analysis) {
-    return [
-      {
-        'type': 'conditions',
-        'title': 'Adaptation aux conditions',
-        'description': 'Adaptez vos pratiques aux conditions actuelles.',
-        'priority': 'medium',
-        'impact': 'Moyen',
-        'effort': 'Faible',
-      },
-    ];
-  }
-
-  static List<Map<String, dynamic>> _getBasicRecommendations() {
-    return [
-      {
-        'type': 'general',
-        'title': 'Recommandation générale',
-        'description': 'Surveillez régulièrement vos cultures.',
-        'priority': 'medium',
-        'impact': 'Moyen',
-        'effort': 'Faible',
-      },
-    ];
-  }
-
-  static int _getPriorityValue(String priority) {
-    switch (priority.toLowerCase()) {
-      case 'high': return 3;
-      case 'medium': return 2;
-      case 'low': return 1;
-      default: return 2;
-    }
-  }
-
-  static int _getImpactValue(String impact) {
-    switch (impact.toLowerCase()) {
-      case 'très élevé': return 4;
-      case 'élevé': return 3;
-      case 'moyen': return 2;
-      case 'faible': return 1;
-      default: return 2;
-    }
-  }
-
-  static Map<String, dynamic> _getFallbackAnalysis(double latitude, double longitude) {
-    return {
-      'location': {
-        'latitude': latitude,
-        'longitude': longitude,
-        'region': _getTogoRegion(latitude),
-      },
-      'analysis': {
-        'overallHealthScore': 0.7,
-        'healthStatus': 'Bonne',
-        'riskFactors': ['Données limitées'],
-        'opportunities': ['Surveillance recommandée'],
-      },
-      'timestamp': DateTime.now().toIso8601String(),
-      'dataSources': ['Fallback Data'],
-    };
-  }
-
-  /// Obtient les meilleures données de sol disponibles
-  static Future<Map<String, dynamic>?> _getBestSoilData({
+  /// Obtenir le tableau de bord professionnel
+  static Future<Map<String, dynamic>> getProfessionalDashboard({
     required double latitude,
     required double longitude,
   }) async {
     try {
-      // Priorité à iSDAsoil pour l'Afrique
-      final isdaData = await IsdaSoilService.getSoilData(
+      final analysis = await getCompleteAnalysis(
         latitude: latitude,
         longitude: longitude,
       );
       
-      if (isdaData != null) {
-        print('Données de sol iSDAsoil récupérées');
-        return isdaData;
-      }
+      return {
+        'location': {
+          'latitude': latitude,
+          'longitude': longitude,
+          'region': analysis['region'],
+          'country': 'Togo',
+        },
+        'weather': {
+          'current': analysis['weather'],
+          'forecast': analysis['weatherForecast'],
+          'alerts': analysis['weatherAlerts'],
+        },
+        'soil': {
+          'analysis': analysis['soil'],
+          'recommendations': analysis['soilRecommendations'],
+        },
+        'agriculture': {
+          'crops': analysis['cropRecommendations'],
+          'market': analysis['marketData'],
+          'statistics': analysis['agriculturalStatistics'],
+        },
+        'satellite': {
+          'vegetation': analysis['vegetationIndex'],
+          'moisture': analysis['soilMoisture'],
+          'temperature': analysis['landSurfaceTemperature'],
+        },
+        'recommendations': analysis['recommendations'],
+        'alerts': analysis['alerts'],
+        'lastUpdated': DateTime.now().toIso8601String(),
+        'dataQuality': _assessDataQuality(analysis),
+        'confidence': _calculateConfidence(analysis),
+      };
       
-      // Fallback vers le service de sol générique
-      return await RealSoilService.getSoilData(
-        latitude: latitude,
-        longitude: longitude,
-      );
     } catch (e) {
-      print('Erreur données de sol: $e');
-      return null;
+      print('❌ Erreur tableau de bord: $e');
+      return _getFallbackDashboard(latitude, longitude);
     }
+  }
+
+  // Méthodes privées pour récupérer les données
+
+  static Future<Map<String, dynamic>> _getWeatherData(double lat, double lon) async {
+    try {
+      final current = await RealWeatherService.getCurrentWeather(
+        latitude: lat,
+        longitude: lon,
+      );
+      final forecast = await RealWeatherService.getWeatherForecast(
+        latitude: lat,
+        longitude: lon,
+        days: 7,
+      );
+      final alerts = await RealWeatherService.getWeatherAlerts(
+        latitude: lat,
+        longitude: lon,
+      );
+      
+      return {
+        'current': current,
+        'forecast': forecast,
+        'alerts': alerts,
+        'source': 'Real Weather Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données météo: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getSoilData(double lat, double lon) async {
+    try {
+      final soil = await RealSoilService.getSoilData(
+        latitude: lat,
+        longitude: lon,
+      );
+      final recommendations = await RealSoilService.getCropRecommendations(
+        latitude: lat,
+        longitude: lon,
+        soilData: soil,
+      );
+      
+      return {
+        'analysis': soil,
+        'recommendations': recommendations,
+        'source': 'Real Soil Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données sol: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getAgriculturalData(double lat, double lon) async {
+    try {
+      final production = await TogoAgriculturalDataService.getProductionData();
+      final prices = await TogoAgriculturalDataService.getMarketPrices();
+      final statistics = await TogoAgriculturalDataService.getAgriculturalStatistics();
+      final recommendations = await TogoAgriculturalDataService.getAgriculturalRecommendations(
+        latitude: lat,
+        longitude: lon,
+        season: _getCurrentSeason(),
+      );
+      
+      return {
+        'production': production,
+        'prices': prices,
+        'statistics': statistics,
+        'recommendations': recommendations,
+        'source': 'Togo Agricultural Data Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données agricoles: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getSatelliteData(double lat, double lon, double radius) async {
+    try {
+      final vegetation = await SatelliteService.getVegetationData(
+        latitude: lat,
+        longitude: lon,
+        radiusKm: radius,
+      );
+      final moisture = await SatelliteService.getSoilMoisture(
+        latitude: lat,
+        longitude: lon,
+        radiusKm: radius,
+      );
+      final temperature = await SatelliteService.getLandSurfaceTemperature(
+        latitude: lat,
+        longitude: lon,
+        radiusKm: radius,
+      );
+      
+      return {
+        'vegetation': vegetation,
+        'moisture': moisture,
+        'temperature': temperature,
+        'source': 'Satellite Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données satellite: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getMarketData(double lat, double lon) async {
+    try {
+      final prices = await TogoAgriculturalDataService.getMarketPrices();
+      final production = await TogoAgriculturalDataService.getProductionData();
+      
+      return {
+        'prices': prices,
+        'production': production,
+        'trends': _analyzeMarketTrends(prices, production),
+        'source': 'Market Data Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données marché: $e');
+      return {};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _getHistoricalData(double lat, double lon) async {
+    try {
+      final weather = await TogoAgriculturalDataService.getHistoricalWeatherData(
+        latitude: lat,
+        longitude: lon,
+        year: DateTime.now().year - 1,
+      );
+      final production = await TogoAgriculturalDataService.getProductionData(
+        year: DateTime.now().year - 1,
+      );
+      
+      return {
+        'weather': weather,
+        'production': production,
+        'trends': _analyzeHistoricalTrends(weather, production),
+        'source': 'Historical Data Service',
+      };
+    } catch (e) {
+      print('❌ Erreur données historiques: $e');
+      return {};
+    }
+  }
+
+  // Méthodes d'analyse et de combinaison
+
+  static Map<String, dynamic> _analyzeAndCombineData(
+    Map<String, dynamic> weatherData,
+    Map<String, dynamic> soilData,
+    Map<String, dynamic> agriculturalData,
+    Map<String, dynamic> satelliteData,
+    Map<String, dynamic> marketData,
+    Map<String, dynamic> historicalData,
+    double latitude,
+    double longitude,
+  ) {
+    final region = _determineTogoRegion(latitude, longitude);
+    final season = _getCurrentSeason();
+    
+    return {
+      'location': {
+        'latitude': latitude,
+        'longitude': longitude,
+        'region': region,
+        'country': 'Togo',
+        'season': season,
+      },
+      'weather': weatherData['current'] ?? {},
+      'weatherForecast': weatherData['forecast'] ?? [],
+      'weatherAlerts': weatherData['alerts'] ?? [],
+      'soil': soilData['analysis'] ?? {},
+      'soilRecommendations': soilData['recommendations'] ?? [],
+      'cropRecommendations': _getCropRecommendations(soilData, weatherData, agriculturalData),
+      'marketData': marketData,
+      'agriculturalStatistics': agriculturalData['statistics'] ?? {},
+      'vegetationIndex': satelliteData['vegetation'] ?? {},
+      'soilMoisture': satelliteData['moisture'] ?? {},
+      'landSurfaceTemperature': satelliteData['temperature'] ?? {},
+      'recommendations': _generateRecommendations(
+        weatherData,
+        soilData,
+        agriculturalData,
+        satelliteData,
+        marketData,
+        region,
+        season,
+      ),
+      'alerts': _generateAlerts(weatherData, soilData, agriculturalData),
+      'dataQuality': _assessDataQuality({
+        'weather': weatherData,
+        'soil': soilData,
+        'agricultural': agriculturalData,
+        'satellite': satelliteData,
+      }),
+      'confidence': _calculateConfidence({
+        'weather': weatherData,
+        'soil': soilData,
+        'agricultural': agriculturalData,
+        'satellite': satelliteData,
+      }),
+      'lastUpdated': DateTime.now().toIso8601String(),
+      'sources': _getDataSources(weatherData, soilData, agriculturalData, satelliteData),
+    };
+  }
+
+  static List<Map<String, dynamic>> _getCropRecommendations(
+    Map<String, dynamic> soilData,
+    Map<String, dynamic> weatherData,
+    Map<String, dynamic> agriculturalData,
+  ) {
+    final recommendations = <Map<String, dynamic>>[];
+    
+    // Obtenir les recommandations de sol
+    final soilRecommendations = soilData['recommendations'] as List? ?? [];
+      recommendations.addAll(soilRecommendations.cast<Map<String, dynamic>>());
+    
+    // Ajouter des recommandations basées sur la météo
+    final weather = weatherData['current'] as Map<String, dynamic>? ?? {};
+    final season = _getCurrentSeason();
+    
+    if (season == 'SAISON_DES_PLUIES') {
+      recommendations.add({
+        'crop': 'Riz',
+        'compatibility': 0.9,
+        'reason': 'Saison des pluies idéale pour le riz',
+        'priority': 'HIGH',
+      });
+    }
+    
+    if (weather['temperature'] != null && weather['temperature'] > 25) {
+      recommendations.add({
+        'crop': 'Tomate',
+        'compatibility': 0.8,
+        'reason': 'Température favorable pour la tomate',
+        'priority': 'MEDIUM',
+      });
+    }
+    
+    return recommendations;
+  }
+
+  static List<Map<String, dynamic>> _generateRecommendations(
+    Map<String, dynamic> weatherData,
+    Map<String, dynamic> soilData,
+    Map<String, dynamic> agriculturalData,
+    Map<String, dynamic> satelliteData,
+    Map<String, dynamic> marketData,
+    String region,
+    String season,
+  ) {
+    final recommendations = <Map<String, dynamic>>[];
+    
+    // Recommandations météorologiques
+    final weather = weatherData['current'] as Map<String, dynamic>? ?? {};
+    if (weather['description']?.toString().toLowerCase().contains('pluie') == true) {
+      recommendations.add({
+        'type': 'WEATHER',
+        'title': 'Préparation aux pluies',
+        'description': 'Préparez vos cultures pour les pluies attendues',
+        'priority': 'HIGH',
+        'action': 'Vérifiez le drainage et protégez les cultures sensibles',
+      });
+    }
+    
+    // Recommandations de sol
+    final soil = soilData['analysis'] as Map<String, dynamic>? ?? {};
+    if (soil['ph'] != null && soil['ph'] < 6.0) {
+      recommendations.add({
+        'type': 'SOIL',
+        'title': 'Amélioration du pH',
+        'description': 'Le pH du sol est trop acide',
+        'priority': 'MEDIUM',
+        'action': 'Ajoutez de la chaux pour augmenter le pH',
+      });
+    }
+    
+    // Recommandations de marché
+    final prices = marketData['prices'] as Map<String, dynamic>? ?? {};
+    if (prices['data'] != null) {
+      recommendations.add({
+        'type': 'MARKET',
+        'title': 'Opportunités de marché',
+        'description': 'Analysez les prix actuels pour optimiser vos ventes',
+        'priority': 'LOW',
+        'action': 'Consultez les prix des marchés locaux',
+      });
+    }
+    
+    return recommendations;
+  }
+
+  static List<Map<String, dynamic>> _generateAlerts(
+    Map<String, dynamic> weatherData,
+    Map<String, dynamic> soilData,
+    Map<String, dynamic> agriculturalData,
+  ) {
+    final alerts = <Map<String, dynamic>>[];
+    
+    // Alertes météorologiques
+    final weatherAlerts = weatherData['alerts'] as List? ?? [];
+    alerts.addAll(weatherAlerts.map((alert) => {
+      ...alert,
+      'type': 'WEATHER',
+      'severity': _mapWeatherSeverity(alert['severity']),
+    }));
+    
+    // Alertes de sol
+    final soil = soilData['analysis'] as Map<String, dynamic>? ?? {};
+    if (soil['fertility'] == 'LOW') {
+      alerts.add({
+        'type': 'SOIL',
+        'title': 'Fertilité du sol faible',
+        'description': 'La fertilité de votre sol est insuffisante',
+        'severity': 'MEDIUM',
+        'action': 'Améliorez la fertilité avec des engrais organiques',
+        'timestamp': DateTime.now().toIso8601String(),
+      });
+    }
+    
+    return alerts;
+  }
+
+  // Méthodes utilitaires
+
+  static String _determineTogoRegion(double lat, double lon) {
+    if (lat >= 10.0) return 'KARA';
+    if (lat >= 8.0) return 'CENTRALE';
+    if (lat >= 6.5) return 'PLATEAUX';
+    return 'MARITIME';
+  }
+
+  static String _getCurrentSeason() {
+    final month = DateTime.now().month;
+    if (month >= 3 && month <= 6) return 'SAISON_DES_PLUIES';
+    if (month >= 9 && month <= 11) return 'PETITE_SAISON_DES_PLUIES';
+    return 'SAISON_SECHE';
+  }
+
+  static String _mapWeatherSeverity(dynamic severity) {
+    if (severity == null) return 'LOW';
+    final severityStr = severity.toString().toUpperCase();
+    if (severityStr.contains('HIGH') || severityStr.contains('SEVERE')) return 'HIGH';
+    if (severityStr.contains('MEDIUM') || severityStr.contains('MODERATE')) return 'MEDIUM';
+    return 'LOW';
+  }
+
+  static int _getPriorityValue(String? priority) {
+    switch (priority?.toUpperCase()) {
+      case 'HIGH': return 3;
+      case 'MEDIUM': return 2;
+      case 'LOW': return 1;
+      default: return 0;
+    }
+  }
+
+  static int _getSeverityValue(String? severity) {
+    switch (severity?.toUpperCase()) {
+      case 'HIGH': return 3;
+      case 'MEDIUM': return 2;
+      case 'LOW': return 1;
+      default: return 0;
+    }
+  }
+
+  static Map<String, dynamic> _assessDataQuality(Map<String, dynamic> data) {
+    int totalSources = 0;
+    int availableSources = 0;
+    
+    data.forEach((key, value) {
+      totalSources++;
+      if (value != null && value.isNotEmpty) {
+        availableSources++;
+      }
+    });
+    
+    final quality = availableSources / totalSources;
+    
+    return {
+      'score': quality,
+      'level': quality > 0.8 ? 'EXCELLENT' : quality > 0.6 ? 'GOOD' : quality > 0.4 ? 'FAIR' : 'POOR',
+      'availableSources': availableSources,
+      'totalSources': totalSources,
+    };
+  }
+
+  static double _calculateConfidence(Map<String, dynamic> data) {
+    double confidence = 0.0;
+    int count = 0;
+    
+    data.forEach((key, value) {
+      if (value != null && value.isNotEmpty) {
+        confidence += 0.25; // Chaque source ajoute 25%
+        count++;
+      }
+    });
+    
+    return confidence;
+  }
+
+  static List<String> _getDataSources(
+    Map<String, dynamic> weatherData,
+    Map<String, dynamic> soilData,
+    Map<String, dynamic> agriculturalData,
+    Map<String, dynamic> satelliteData,
+  ) {
+    final sources = <String>[];
+    
+    if (weatherData['source'] != null) sources.add(weatherData['source']);
+    if (soilData['source'] != null) sources.add(soilData['source']);
+    if (agriculturalData['source'] != null) sources.add(agriculturalData['source']);
+    if (satelliteData['source'] != null) sources.add(satelliteData['source']);
+    
+    return sources;
+  }
+
+  static Map<String, dynamic> _analyzeMarketTrends(Map<String, dynamic> prices, Map<String, dynamic> production) {
+    return {
+      'trend': 'STABLE',
+      'analysis': 'Les prix restent stables',
+      'recommendation': 'Continuez votre production actuelle',
+    };
+  }
+
+  static Map<String, dynamic> _analyzeHistoricalTrends(Map<String, dynamic> weather, Map<String, dynamic> production) {
+    return {
+      'trend': 'POSITIVE',
+      'analysis': 'Tendances positives observées',
+      'recommendation': 'Maintenez vos pratiques actuelles',
+    };
+  }
+
+  // Méthodes de fallback
+
+  static Map<String, dynamic> _getFallbackAnalysis(double lat, double lon) {
+    return {
+      'location': {
+        'latitude': lat,
+        'longitude': lon,
+        'region': _determineTogoRegion(lat, lon),
+        'country': 'Togo',
+      },
+      'weather': _getFallbackWeather(),
+      'soil': _getFallbackSoil(),
+      'recommendations': _getFallbackRecommendations(),
+      'alerts': [],
+      'dataQuality': {'score': 0.3, 'level': 'POOR'},
+      'confidence': 0.3,
+      'lastUpdated': DateTime.now().toIso8601String(),
+      'sources': ['Fallback Data'],
+    };
+  }
+
+  static Map<String, dynamic> _getFallbackDashboard(double lat, double lon) {
+    return {
+      'location': {
+        'latitude': lat,
+        'longitude': lon,
+        'region': _determineTogoRegion(lat, lon),
+        'country': 'Togo',
+      },
+      'weather': _getFallbackWeather(),
+      'soil': _getFallbackSoil(),
+      'agriculture': _getFallbackAgriculture(),
+      'recommendations': _getFallbackRecommendations(),
+      'alerts': [],
+      'lastUpdated': DateTime.now().toIso8601String(),
+      'dataQuality': {'score': 0.3, 'level': 'POOR'},
+      'confidence': 0.3,
+    };
+  }
+
+  static Map<String, dynamic> _getFallbackWeather() {
+    return {
+      'temperature': 28.0,
+      'description': 'Ciel dégagé',
+      'humidity': 70,
+      'source': 'Données climatiques du Togo',
+    };
+  }
+
+  static Map<String, dynamic> _getFallbackSoil() {
+    return {
+      'ph': 6.5,
+      'texture': 'Équilibré',
+      'fertility': 'MEDIUM',
+      'source': 'Données pédologiques du Togo',
+    };
+  }
+
+  static Map<String, dynamic> _getFallbackAgriculture() {
+    return {
+      'crops': _getFallbackCrops(),
+      'market': _getFallbackMarket(),
+      'statistics': _getFallbackStatistics(),
+    };
+  }
+
+  static List<Map<String, dynamic>> _getFallbackCrops() {
+    return [
+      {
+        'crop': 'Maïs',
+        'compatibility': 0.8,
+        'estimatedYield': 3.0,
+        'optimalSeason': 'Grande saison des pluies',
+      },
+      {
+        'crop': 'Riz',
+        'compatibility': 0.7,
+        'estimatedYield': 4.0,
+        'optimalSeason': 'Grande saison des pluies',
+      },
+    ];
+  }
+
+  static Map<String, dynamic> _getFallbackMarket() {
+    return {
+      'mais': {'prix': 150, 'unite': 'FCFA/kg'},
+      'riz': {'prix': 200, 'unite': 'FCFA/kg'},
+    };
+  }
+
+  static Map<String, dynamic> _getFallbackStatistics() {
+    return {
+      'totalAgriculturalArea': 2400000,
+      'totalFarmers': 1200000,
+      'agriculturalGDP': 35.0,
+    };
+  }
+
+  static List<Map<String, dynamic>> _getFallbackRecommendations() {
+    return [
+      {
+        'type': 'GENERAL',
+        'title': 'Recommandation générale',
+        'description': 'Consultez les données locales pour des recommandations précises',
+        'priority': 'LOW',
+      },
+    ];
+  }
+
+  // Méthodes pour les alertes
+
+  static Future<List<Map<String, dynamic>>> _getMarketAlerts(double lat, double lon) async {
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> _getAgriculturalAlerts(double lat, double lon) async {
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> _getSoilAlerts(double lat, double lon) async {
+    return [];
+  }
+
+  // Méthodes pour les recommandations personnalisées
+
+  static List<Map<String, dynamic>> _getUserTypeRecommendations(String userType, Map<String, dynamic> analysis) {
+    final recommendations = <Map<String, dynamic>>[];
+    
+    switch (userType.toUpperCase()) {
+      case 'FARMER':
+        recommendations.addAll([
+          {
+            'type': 'CULTURE',
+            'title': 'Cultures recommandées',
+            'description': 'Consultez les recommandations de cultures pour votre région',
+            'priority': 'HIGH',
+          },
+          {
+            'type': 'TECHNIQUE',
+            'title': 'Techniques agricoles',
+            'description': 'Améliorez vos techniques de culture',
+            'priority': 'MEDIUM',
+          },
+        ]);
+        break;
+      case 'COOPERATIVE':
+        recommendations.addAll([
+          {
+            'type': 'ORGANISATION',
+            'title': 'Gestion de la coopérative',
+            'description': 'Optimisez la gestion de votre coopérative',
+            'priority': 'HIGH',
+          },
+          {
+            'type': 'MARKETING',
+            'title': 'Commercialisation',
+            'description': 'Améliorez la commercialisation de vos produits',
+            'priority': 'MEDIUM',
+          },
+        ]);
+        break;
+      case 'INVESTOR':
+        recommendations.addAll([
+          {
+            'type': 'INVESTMENT',
+            'title': 'Opportunités d\'investissement',
+            'description': 'Identifiez les opportunités d\'investissement agricole',
+            'priority': 'HIGH',
+          },
+          {
+            'type': 'RISK',
+            'title': 'Gestion des risques',
+            'description': 'Évaluez et gérez les risques d\'investissement',
+            'priority': 'MEDIUM',
+          },
+        ]);
+        break;
+      case 'RESEARCHER':
+        recommendations.addAll([
+          {
+            'type': 'RESEARCH',
+            'title': 'Domaines de recherche',
+            'description': 'Identifiez les domaines de recherche prioritaires',
+            'priority': 'HIGH',
+          },
+          {
+            'type': 'DATA',
+            'title': 'Collecte de données',
+            'description': 'Améliorez la collecte et l\'analyse de données',
+            'priority': 'MEDIUM',
+          },
+        ]);
+        break;
+    }
+    
+    return recommendations;
+  }
+
+  static List<Map<String, dynamic>> _getInterestBasedRecommendations(List<String> interests, Map<String, dynamic> analysis) {
+    final recommendations = <Map<String, dynamic>>[];
+    
+    for (final interest in interests) {
+      switch (interest.toUpperCase()) {
+        case 'CROPS':
+          recommendations.add({
+            'type': 'CROPS',
+            'title': 'Gestion des cultures',
+            'description': 'Optimisez la gestion de vos cultures',
+            'priority': 'HIGH',
+          });
+          break;
+        case 'LIVESTOCK':
+          recommendations.add({
+            'type': 'LIVESTOCK',
+            'title': 'Élevage',
+            'description': 'Développez votre activité d\'élevage',
+            'priority': 'MEDIUM',
+          });
+          break;
+        case 'MARKETING':
+          recommendations.add({
+            'type': 'MARKETING',
+            'title': 'Commercialisation',
+            'description': 'Améliorez la commercialisation de vos produits',
+            'priority': 'MEDIUM',
+          });
+          break;
+        case 'TECHNOLOGY':
+          recommendations.add({
+            'type': 'TECHNOLOGY',
+            'title': 'Technologie agricole',
+            'description': 'Adoptez les nouvelles technologies agricoles',
+            'priority': 'LOW',
+          });
+          break;
+      }
+    }
+    
+    return recommendations;
+  }
+
+  static List<Map<String, dynamic>> _getDataBasedRecommendations(Map<String, dynamic> analysis) {
+    final recommendations = <Map<String, dynamic>>[];
+    
+    // Recommandations basées sur l'analyse des données
+    if (analysis['weather'] != null) {
+      recommendations.add({
+        'type': 'WEATHER',
+        'title': 'Gestion météorologique',
+        'description': 'Adaptez vos pratiques aux conditions météorologiques',
+        'priority': 'MEDIUM',
+      });
+    }
+    
+    if (analysis['soil'] != null) {
+      recommendations.add({
+        'type': 'SOIL',
+        'title': 'Amélioration du sol',
+        'description': 'Améliorez la qualité de votre sol',
+        'priority': 'HIGH',
+      });
+    }
+    
+    return recommendations;
   }
 }

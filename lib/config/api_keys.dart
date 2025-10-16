@@ -58,6 +58,39 @@ class ApiKeys {
   /// Togo Agricultural Data API Key (si vous en créez une)
   static const String togoAgriculturalApiKey = 'YOUR_TOGO_AGRICULTURAL_API_KEY';
   
+  /// World Bank API Key (pour les données économiques)
+  /// Obtenez votre clé sur: https://datahelpdesk.worldbank.org/
+  static const String worldBankApiKey = 'YOUR_WORLD_BANK_API_KEY';
+  
+  /// UN Statistics API Key (pour les données démographiques)
+  /// Obtenez votre clé sur: https://unstats.un.org/
+  static const String unStatsApiKey = 'YOUR_UN_STATS_API_KEY';
+  
+  // ===== SERVICES GOUVERNEMENTAUX =====
+  
+  /// Ministère de l'Agriculture du Togo API Key
+  static const String governmentApiKey = 'YOUR_GOVERNMENT_API_KEY';
+  
+  /// API Météo Officielle du Togo
+  static const String meteoApiKey = 'YOUR_METEO_API_KEY';
+  
+  /// API Douanes du Togo (prix d'import/export)
+  static const String douanesApiKey = 'YOUR_DOUANES_API_KEY';
+  
+  /// API Statistiques du Togo
+  static const String inseeApiKey = 'YOUR_INSEE_API_KEY';
+  
+  // ===== SÉCURITÉ ET AUDIT =====
+  
+  /// Token d'audit pour les logs de sécurité
+  static const String auditToken = 'YOUR_AUDIT_TOKEN';
+  
+  /// Clé de chiffrement pour les données sensibles
+  static const String encryptionKey = 'YOUR_ENCRYPTION_KEY';
+  
+  /// Token d'authentification pour les services gouvernementaux
+  static const String governmentAuthToken = 'YOUR_GOVERNMENT_AUTH_TOKEN';
+  
   // ===== CONFIGURATION =====
   
   /// Mode de développement (utilise des données simulées si true)
@@ -91,6 +124,15 @@ class ApiKeys {
       'NASA Earthdata': isApiKeyConfigured(nasaEarthdataApiKey),
       'FAO': isApiKeyConfigured(faoApiKey),
       'Togo Agricultural': isApiKeyConfigured(togoAgriculturalApiKey),
+      'World Bank': isApiKeyConfigured(worldBankApiKey),
+      'UN Statistics': isApiKeyConfigured(unStatsApiKey),
+      'Government': isApiKeyConfigured(governmentApiKey),
+      'Meteo Officielle': isApiKeyConfigured(meteoApiKey),
+      'Douanes': isApiKeyConfigured(douanesApiKey),
+      'INSEE': isApiKeyConfigured(inseeApiKey),
+      'Audit': isApiKeyConfigured(auditToken),
+      'Encryption': isApiKeyConfigured(encryptionKey),
+      'Government Auth': isApiKeyConfigured(governmentAuthToken),
     };
   }
   

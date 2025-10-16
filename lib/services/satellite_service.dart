@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 
 /// Service de données satellitaires basé sur Sentinel Hub et autres sources
@@ -13,6 +14,27 @@ class SatelliteService {
   
   // Copernicus Open Access Hub (gratuite)
   static const String _copernicusUrl = 'https://scihub.copernicus.eu/dhus';
+
+  /// Obtenir les données de végétation
+  static Future<Map<String, dynamic>> getVegetationData({
+    required double latitude,
+    required double longitude,
+    double radiusKm = 5.0,
+  }) async {
+    try {
+      // Simulation des données de végétation
+      return {
+        'ndvi': 0.6 + (math.sin(latitude * 0.1) * 0.2),
+        'evi': 0.4 + (math.cos(longitude * 0.1) * 0.15),
+        'savi': 0.5 + (math.sin(latitude + longitude) * 0.1),
+        'source': 'Simulated Vegetation Data',
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+    } catch (e) {
+      print('Erreur données végétation: $e');
+      return {};
+    }
+  }
 
   /// Obtenir les données NDVI (Normalized Difference Vegetation Index)
   static Future<Map<String, dynamic>> getNDVIData({
@@ -440,7 +462,7 @@ class SatelliteService {
   // Méthodes utilitaires
   static List<double> _calculateBoundingBox(double lat, double lon, double radiusKm) {
     final latDelta = radiusKm / 111.0; // 1 degré ≈ 111 km
-    final lonDelta = radiusKm / (111.0 * cos(lat * 3.14159 / 180.0));
+    final lonDelta = radiusKm / (111.0 * math.cos(lat * 3.14159 / 180.0));
     
     return [
       lon - lonDelta, // minLon

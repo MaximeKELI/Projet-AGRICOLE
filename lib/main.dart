@@ -1,7 +1,7 @@
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/foundation.dart'
+import 'package:flutter/foundation.dart';
 import 'package:app_agrigeo/utils/theme.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,8 +17,9 @@ import 'package:app_agrigeo/screens/documents_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_agrigeo/screens/api_config_screen.dart';
 import 'package:app_agrigeo/screens/registration_screen.dart';
+import 'package:app_agrigeo/screens/api_diagnostic_screen.dart';
 import 'package:app_agrigeo/services/api_diagnostic_service.dart';
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:app_agrigeo/services/real_data_integration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,7 +65,7 @@ void main() async {
 
   // Diagnostic des clés API au démarrage
   try {
-    await ApiDiagnosticService.printDiagnosticReport();
+    await ApiDiagnosticService.performFullDiagnostic();
   } catch (e) {
     print("Erreur diagnostic API: $e");
   }

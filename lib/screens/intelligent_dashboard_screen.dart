@@ -16,6 +16,7 @@ import '../services/inventory_service.dart';
 import '../services/animation_service.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/agricultural_metrics.dart';
+import '../widgets/soil_analysis_widget.dart';
 import '../services/agricultural_service.dart';
 import '../services/notification_service.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -317,6 +318,7 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
     },
     'display': {
       'showWeather': true,
+      'showSoilAnalysis': true,
       'showAIRecommendations': true,
       'showPerformanceMetrics': true,
       'showCharts': true,
@@ -857,6 +859,10 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
                           _buildWeatherSection(),
                           const SizedBox(height: 20),
                         ],
+                        if (_settings['display']['showSoilAnalysis'] == true) ...[
+                          _buildSoilAnalysisSection(),
+                          const SizedBox(height: 20),
+                        ],
                         if (_settings['display']['showAIRecommendations'] == true) ...[
                           _buildAIRecommendationsSection(),
                           const SizedBox(height: 20),
@@ -984,6 +990,18 @@ class _IntelligentDashboardScreenState extends State<IntelligentDashboardScreen>
           style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
       ],
+    );
+  }
+
+  Widget _buildSoilAnalysisSection() {
+    // Coordonnées par défaut pour Lomé, Togo
+    const double defaultLatitude = 6.1725;
+    const double defaultLongitude = 1.2314;
+    
+    return SoilAnalysisWidget(
+      latitude: defaultLatitude,
+      longitude: defaultLongitude,
+      cropType: 'maïs', // Culture par défaut
     );
   }
 
@@ -4010,6 +4028,16 @@ class _SettingsScreenState extends State<_SettingsScreen> {
           },
         ),
         SwitchListTile(
+          title: const Text('Analyse du Sol'),
+          subtitle: const Text('Afficher l\'analyse des données de sol'),
+          value: _currentSettings['display']['showSoilAnalysis'] as bool,
+          onChanged: (value) {
+            setState(() {
+              _currentSettings['display']['showSoilAnalysis'] = value;
+            });
+          },
+        ),
+        SwitchListTile(
           title: const Text('Recommandations IA'),
           subtitle: const Text('Afficher les suggestions IA'),
           value: _currentSettings['display']['showAIRecommendations'] as bool,
@@ -4631,6 +4659,7 @@ class _SettingsScreenState extends State<_SettingsScreen> {
                   },
                   'display': {
                     'showWeather': true,
+                    'showSoilAnalysis': true,
                     'showAIRecommendations': true,
                     'showPerformanceMetrics': true,
                     'showCharts': true,
