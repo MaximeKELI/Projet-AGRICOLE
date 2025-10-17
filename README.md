@@ -326,11 +326,16 @@
 
 <div class="slide-in" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; border-radius: 20px; margin: 20px 0; box-shadow: 0 15px 35px rgba(0,0,0,0.2);">
 
-**AGRICOLE** est une plateforme agricole révolutionnaire qui combine l'intelligence artificielle, la cartographie avancée, et les technologies mobiles pour transformer l'agriculture au Sénégal et en Afrique. Notre solution complète couvre toute la chaîne de valeur agricole, de la plantation à la commercialisation internationale.
+**AGRICOLE** est une plateforme agricole révolutionnaire qui combine l'intelligence artificielle, la cartographie avancée, et les technologies mobiles pour transformer l'agriculture au Togo et en Afrique. Notre solution complète couvre toute la chaîne de valeur agricole, de la plantation à la commercialisation internationale.
 
 ### 🌟 **Vision**
 <div class="pulse-text" style="font-size: 1.3em; margin: 15px 0;">
 Créer un écosystème agricole intelligent qui permet aux producteurs d'optimiser leurs rendements, d'accéder aux marchés internationaux, et de contribuer à la sécurité alimentaire de l'Afrique.
+</div>
+
+### 🏢 **À Propos d'All-Coders**
+<div class="alert-box alert-info">
+  <strong>🏢 All-Coders</strong> - Entreprise de développement technologique basée au Togo, spécialisée dans les solutions innovantes pour l'agriculture et le développement durable en Afrique.
 </div>
 
 ### 🎯 **Mission**
@@ -923,7 +928,7 @@ graph TD
 
 ```mermaid
 pie title Répartition des Marchés
-    "🇸🇳 Sénégal (National)" : 40
+    "🇹🇬 Togo (National)" : 40
     "🇫🇷 France" : 25
     "🇪🇸 Espagne" : 15
     "🇲🇦 Maroc" : 10
@@ -938,7 +943,7 @@ pie title Répartition des Marchés
 <div class="timeline">
 
 <div class="timeline-item">
-  <h3>🌍 Phase 1 : Sénégal (0-6 mois)</h3>
+  <h3>🌍 Phase 1 : Togo (0-6 mois)</h3>
   <div class="alert-box alert-success">
     <strong>✅ Objectifs :</strong>
     <ul>
@@ -1245,7 +1250,7 @@ SOFTWARE.
   </div>
   <div class="stat-item" style="background: linear-gradient(135deg, #9C27B0, #7B1FA2);">
     <div class="stat-number">📧</div>
-    <div class="stat-label">Email<br><small>contact@agricole.app</small></div>
+    <div class="stat-label">Email<br><small>presidentnetero01@gmail.com</small></div>
   </div>
 </div>
 
@@ -1263,8 +1268,9 @@ SOFTWARE.
   <ul>
     <li><strong>💬 Chat en direct</strong> - Disponible 24/7</li>
     <li><strong>📧 Email support</strong> - support@agricole.app</li>
-    <li><strong>📞 Téléphone</strong> - +221 33 XXX XX XX</li>
-    <li><strong>📱 WhatsApp</strong> - +221 77 XXX XX XX</li>
+    <li><strong>📞 Téléphone Togo</strong> - +228 98-60-00-18</li>
+    <li><strong>📞 Téléphone France</strong> - +33 7 54830039</li>
+    <li><strong>📱 WhatsApp</strong> - +228 98-60-00-18</li>
   </ul>
 </div>
 
@@ -1293,12 +1299,13 @@ SOFTWARE.
   font-size: 1.5em;
   margin: 20px 0;
   text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-">*Développé avec ❤️ au Sénégal pour l'Afrique et le monde*</p>
+">*Développé avec ❤️ par All-Coders au Togo pour l'Afrique et le monde*</p>
 
 <div style="margin-top: 30px;">
   <img src="https://img.shields.io/badge/Made%20with-Flutter-blue.svg?style=for-the-badge&logo=flutter" alt="Made with Flutter">
   <img src="https://img.shields.io/badge/Powered%20by-Firebase-orange.svg?style=for-the-badge&logo=firebase" alt="Powered by Firebase">
   <img src="https://img.shields.io/badge/AI-Powered-purple.svg?style=for-the-badge&logo=openai" alt="AI Powered">
+  <img src="https://img.shields.io/badge/Developed%20by-All--Coders-green.svg?style=for-the-badge&logo=togo" alt="Developed by All-Coders">
 </div>
 
 </div>
