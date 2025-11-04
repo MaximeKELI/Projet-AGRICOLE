@@ -15,25 +15,16 @@ class SatelliteService {
   // Copernicus Open Access Hub (gratuite)
   static const String _copernicusUrl = 'https://scihub.copernicus.eu/dhus';
 
-  /// Obtenir les données de végétation
+  /// Obtenir les données de végétation - UNIQUEMENT depuis des APIs satellitaires réelles
   static Future<Map<String, dynamic>> getVegetationData({
     required double latitude,
     required double longitude,
     double radiusKm = 5.0,
   }) async {
-    try {
-      // Simulation des données de végétation
-      return {
-        'ndvi': 0.6 + (math.sin(latitude * 0.1) * 0.2),
-        'evi': 0.4 + (math.cos(longitude * 0.1) * 0.15),
-        'savi': 0.5 + (math.sin(latitude + longitude) * 0.1),
-        'source': 'Simulated Vegetation Data',
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-    } catch (e) {
-      print('Erreur données végétation: $e');
-      return {};
-    }
+    // Cette méthode doit utiliser des APIs satellitaires réelles (Sentinel Hub, NASA, etc.)
+    // Aucune donnée inventée n'est retournée
+    
+    throw Exception('Les données de végétation doivent être obtenues depuis des APIs satellitaires réelles. Configurez Sentinel Hub ou une autre API satellitaire.');
   }
 
   /// Obtenir les données NDVI (Normalized Difference Vegetation Index)
@@ -53,12 +44,11 @@ class SatelliteService {
       final landsatData = await _getLandsatNDVI(latitude, longitude, radiusKm, startDate, endDate);
       if (landsatData != null) return landsatData;
       
-      // Dernier recours : données moyennes du Togo
-      return _getTogoNDVIData(latitude, longitude);
-      
+      // Si aucune API n'est disponible, retourner une erreur claire
+      throw Exception('Impossible d\'obtenir les données NDVI. Configurez Sentinel Hub ou une autre API satellitaire.');
     } catch (e) {
       print('Erreur NDVI: $e');
-      return _getTogoNDVIData(latitude, longitude);
+      throw Exception('Impossible d\'obtenir les données NDVI. Vérifiez la configuration des APIs satellitaires.');
     }
   }
 
@@ -73,11 +63,10 @@ class SatelliteService {
       final lstData = await _getLandsatLST(latitude, longitude, radiusKm, date);
       if (lstData != null) return lstData;
       
-      return _getTogoLSTData(latitude, longitude);
-      
+      throw Exception('Impossible d\'obtenir les données de température de surface. Configurez une API satellitaire.');
     } catch (e) {
       print('Erreur LST: $e');
-      return _getTogoLSTData(latitude, longitude);
+      throw Exception('Impossible d\'obtenir les données de température de surface. Vérifiez la configuration.');
     }
   }
 
@@ -92,11 +81,10 @@ class SatelliteService {
       final smData = await _getSentinel1SoilMoisture(latitude, longitude, radiusKm, date);
       if (smData != null) return smData;
       
-      return _getTogoSoilMoistureData(latitude, longitude);
-      
+      throw Exception('Impossible d\'obtenir les données d\'humidité du sol. Configurez Sentinel-1 ou une autre API.');
     } catch (e) {
       print('Erreur humidité sol: $e');
-      return _getTogoSoilMoistureData(latitude, longitude);
+      throw Exception('Impossible d\'obtenir les données d\'humidité du sol. Vérifiez la configuration.');
     }
   }
 
@@ -112,11 +100,10 @@ class SatelliteService {
       final precipData = await _getGPMData(latitude, longitude, radiusKm, startDate, endDate);
       if (precipData != null) return precipData;
       
-      return _getTogoPrecipitationData(latitude, longitude);
-      
+      throw Exception('Impossible d\'obtenir les données de précipitations. Configurez GPM ou une autre API.');
     } catch (e) {
       print('Erreur précipitations: $e');
-      return _getTogoPrecipitationData(latitude, longitude);
+      throw Exception('Impossible d\'obtenir les données de précipitations. Vérifiez la configuration.');
     }
   }
 
@@ -155,7 +142,7 @@ class SatelliteService {
       
     } catch (e) {
       print('Erreur analyse santé: $e');
-      return _getBasicCropHealthAnalysis();
+      throw Exception('Impossible d\'analyser la santé des cultures. Les données satellitaires doivent être disponibles.');
     }
   }
 
@@ -254,103 +241,8 @@ class SatelliteService {
     return null;
   }
 
-  /// Données NDVI du Togo (fallback)
-  static Map<String, dynamic> _getTogoNDVIData(double lat, double lon) {
-    // NDVI moyen par région au Togo
-    double ndvi = 0.6; // Valeur moyenne
-    
-    if (lat > 8.5) {
-      // Zone nord - savane
-      ndvi = 0.5;
-    } else if (lat > 7.0) {
-      // Zone centrale - forêt-savane
-      ndvi = 0.7;
-    } else {
-      // Zone sud - forêt dense
-      ndvi = 0.8;
-    }
-    
-    return {
-      'ndvi': ndvi,
-      'vegetationHealth': _assessVegetationHealth(ndvi),
-      'cropCondition': _assessCropCondition(ndvi),
-      'location': _getTogoLocationName(lat),
-      'source': 'Togo NDVI Average',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
-
-  /// Données LST du Togo (fallback)
-  static Map<String, dynamic> _getTogoLSTData(double lat, double lon) {
-    double lst = 30.0; // Température moyenne
-    
-    if (lat > 8.5) {
-      // Zone nord - plus chaud
-      lst = 32.0;
-    } else if (lat > 7.0) {
-      // Zone centrale
-      lst = 30.0;
-    } else {
-      // Zone sud - plus frais
-      lst = 28.0;
-    }
-    
-    return {
-      'landSurfaceTemperature': lst,
-      'heatStress': _assessHeatStress(lst),
-      'location': _getTogoLocationName(lat),
-      'source': 'Togo LST Average',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
-
-  /// Données d'humidité du sol du Togo (fallback)
-  static Map<String, dynamic> _getTogoSoilMoistureData(double lat, double lon) {
-    double moisture = 0.3; // Humidité moyenne
-    
-    if (lat > 8.5) {
-      // Zone nord - plus sec
-      moisture = 0.2;
-    } else if (lat > 7.0) {
-      // Zone centrale
-      moisture = 0.3;
-    } else {
-      // Zone sud - plus humide
-      moisture = 0.4;
-    }
-    
-    return {
-      'soilMoisture': moisture,
-      'droughtRisk': _assessDroughtRisk(moisture),
-      'irrigationNeed': _assessIrrigationNeed(moisture),
-      'location': _getTogoLocationName(lat),
-      'source': 'Togo Soil Moisture Average',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
-
-  /// Données de précipitations du Togo (fallback)
-  static Map<String, dynamic> _getTogoPrecipitationData(double lat, double lon) {
-    double precipitation = 0.0;
-    final month = DateTime.now().month;
-    
-    // Précipitations moyennes par mois au Togo
-    final monthlyPrecip = {
-      1: 5.0, 2: 15.0, 3: 45.0, 4: 85.0, 5: 120.0, 6: 150.0,
-      7: 100.0, 8: 80.0, 9: 90.0, 10: 60.0, 11: 25.0, 12: 10.0,
-    };
-    
-    precipitation = monthlyPrecip[month] ?? 0.0;
-    
-    return {
-      'precipitation': precipitation,
-      'rainfallSeason': _getRainfallSeason(month),
-      'floodRisk': _assessFloodRisk(precipitation),
-      'location': _getTogoLocationName(lat),
-      'source': 'Togo Precipitation Average',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
+  // Toutes les méthodes de fallback avec données inventées ont été supprimées
+  // Les données doivent provenir d'APIs satellitaires réelles
 
   /// Analyser la santé des cultures
   static Map<String, dynamic> _analyzeCropHealth(
@@ -387,76 +279,34 @@ class SatelliteService {
     };
   }
 
-  /// Analyse de base de la santé des cultures
-  static Map<String, dynamic> _getBasicCropHealthAnalysis() {
-    return {
-      'healthScore': 0.7,
-      'vegetationHealth': 'Bonne',
-      'cropCondition': 'Normale',
-      'heatStress': 'Faible',
-      'droughtRisk': 'Faible',
-      'recommendations': [
-        'Surveiller l\'humidité du sol',
-        'Vérifier les signes de stress hydrique',
-        'Maintenir une irrigation régulière',
-      ],
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-  }
+  // La méthode _getBasicCropHealthAnalysis() avec données inventées a été supprimée
+  // Les analyses doivent être basées sur des données satellitaires réelles
 
-  // Méthodes de traitement des données
+  // Méthodes de traitement des données - DOIVENT traiter les vraies données des APIs
   static Map<String, dynamic> _processSentinel2NDVI(String data, double lat, double lon) {
-    // Traitement des données Sentinel-2
-    return {
-      'ndvi': 0.65,
-      'vegetationHealth': 'Bonne',
-      'cropCondition': 'Normale',
-      'source': 'Sentinel-2',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // Cette méthode doit parser les vraies données Sentinel-2
+    // Pour l'instant, elle doit être implémentée pour traiter les vraies données
+    throw Exception('Le traitement des données Sentinel-2 doit être implémenté pour parser les vraies données.');
   }
 
   static Map<String, dynamic> _processLandsatNDVI(String data, double lat, double lon) {
-    // Traitement des données Landsat
-    return {
-      'ndvi': 0.60,
-      'vegetationHealth': 'Bonne',
-      'cropCondition': 'Normale',
-      'source': 'Landsat',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // Cette méthode doit parser les vraies données Landsat
+    throw Exception('Le traitement des données Landsat doit être implémenté pour parser les vraies données.');
   }
 
   static Map<String, dynamic> _processLandsatLST(String data, double lat, double lon) {
-    // Traitement des données LST Landsat
-    return {
-      'landSurfaceTemperature': 29.5,
-      'heatStress': 'Faible',
-      'source': 'Landsat',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // Cette méthode doit parser les vraies données LST Landsat
+    throw Exception('Le traitement des données LST Landsat doit être implémenté pour parser les vraies données.');
   }
 
   static Map<String, dynamic> _processSentinel1SoilMoisture(String data, double lat, double lon) {
-    // Traitement des données Sentinel-1
-    return {
-      'soilMoisture': 0.35,
-      'droughtRisk': 'Faible',
-      'irrigationNeed': 'Modérée',
-      'source': 'Sentinel-1',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // Cette méthode doit parser les vraies données Sentinel-1
+    throw Exception('Le traitement des données Sentinel-1 doit être implémenté pour parser les vraies données.');
   }
 
   static Map<String, dynamic> _processGPMData(String data, double lat, double lon) {
-    // Traitement des données GPM
-    return {
-      'precipitation': 15.0,
-      'rainfallSeason': 'Saison des pluies',
-      'floodRisk': 'Faible',
-      'source': 'GPM',
-      'timestamp': DateTime.now().toIso8601String(),
-    };
+    // Cette méthode doit parser les vraies données GPM
+    throw Exception('Le traitement des données GPM doit être implémenté pour parser les vraies données.');
   }
 
   // Méthodes utilitaires

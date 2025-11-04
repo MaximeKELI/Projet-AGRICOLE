@@ -1,5 +1,3 @@
-import 'dart:io';
-import 'package:path/path.dart' as path;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -138,16 +136,16 @@ void main() {
         // Vérifier que prefectures a une clé étrangère vers regions
         final regionForeignKey = foreignKeys.firstWhere(
           (fk) => fk['table'] == 'regions',
-          orElse: () => null,
+          orElse: () => <String, dynamic>{},
         );
-        expect(regionForeignKey, isNotNull);
+        expect(regionForeignKey.isNotEmpty, isTrue);
 
         // Vérifier que communes a une clé étrangère vers prefectures
         final prefectureForeignKey = communeForeignKeys.firstWhere(
           (fk) => fk['table'] == 'prefectures',
-          orElse: () => null,
+          orElse: () => <String, dynamic>{},
         );
-        expect(prefectureForeignKey, isNotNull);
+        expect(prefectureForeignKey.isNotEmpty, isTrue);
       });
     });
 
@@ -259,11 +257,11 @@ void main() {
         // Vérifier les calculs
         final metrics = insertedMetrics.first;
         final fieldSize = metrics['field_size'] as double;
-        final yield = metrics['yield'] as double;
+        final yieldValue = metrics['yield'] as double;
         final cost = metrics['cost'] as double;
         final revenue = metrics['revenue'] as double;
 
-        final yieldPerHectare = yield / fieldSize;
+        final yieldPerHectare = yieldValue / fieldSize;
         final profit = revenue - cost;
         final profitPerHectare = profit / fieldSize;
         final costPerHectare = cost / fieldSize;
@@ -510,7 +508,6 @@ void main() {
         expect(result, equals(1));
 
         final regions = await database.query('regions');
-        final prefectures = await database.query('prefectures');
         
         expect(regions.length, equals(0));
         // Note: Dans une vraie base de données avec CASCADE, les préfectures seraient aussi supprimées

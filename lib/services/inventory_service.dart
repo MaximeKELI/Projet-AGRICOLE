@@ -170,64 +170,11 @@ class InventoryService {
     print('InventoryService initialized.');
   }
 
-  // Charger les données initiales
+  // Charger les données initiales - UNIQUEMENT depuis le backend ou la base de données locale de l'utilisateur
   static Future<void> _loadInitialData() async {
-    _items.addAll([
-      InventoryItem(
-        id: 'item_001',
-        name: 'Riz de Casamance',
-        category: 'Céréales',
-        unit: 'tonnes',
-        currentStock: 25.5,
-        minStock: 10.0,
-        maxStock: 50.0,
-        unitPrice: 200000.0,
-        currency: 'FCFA',
-        location: 'Entrepôt A',
-        lastUpdated: DateTime.now().subtract(const Duration(minutes: 15)),
-      ),
-      InventoryItem(
-        id: 'item_002',
-        name: 'Tomates',
-        category: 'Légumes',
-        unit: 'tonnes',
-        currentStock: 8.2,
-        minStock: 5.0,
-        maxStock: 20.0,
-        unitPrice: 300000.0,
-        currency: 'FCFA',
-        location: 'Entrepôt B',
-        lastUpdated: DateTime.now().subtract(const Duration(minutes: 30)),
-      ),
-      InventoryItem(
-        id: 'item_003',
-        name: 'Mangues de Kédougou',
-        category: 'Fruits',
-        unit: 'tonnes',
-        currentStock: 15.8,
-        minStock: 8.0,
-        maxStock: 30.0,
-        unitPrice: 120000.0,
-        currency: 'FCFA',
-        location: 'Entrepôt C',
-        lastUpdated: DateTime.now().subtract(const Duration(hours: 1)),
-      ),
-      InventoryItem(
-        id: 'item_004',
-        name: 'Arachides',
-        category: 'Légumineuses',
-        unit: 'tonnes',
-        currentStock: 2.1,
-        minStock: 5.0,
-        maxStock: 15.0,
-        unitPrice: 180000.0,
-        currency: 'FCFA',
-        location: 'Entrepôt A',
-        lastUpdated: DateTime.now().subtract(const Duration(minutes: 45)),
-      ),
-    ]);
-
-    // Vérifier les alertes
+    // Aucune donnée inventée n'est chargée
+    // Les données doivent être fournies par l'utilisateur ou récupérées depuis le backend
+    // Vérifier les alertes si des données existent déjà
     _checkAlerts();
   }
 

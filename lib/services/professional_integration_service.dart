@@ -1,6 +1,4 @@
-import 'dart:convert';
 import 'security/audit_service.dart';
-import 'package:http/http.dart' as http;
 import 'security/security_service.dart';
 import 'government/certification_service.dart';
 import 'government/government_data_service.dart';
@@ -82,9 +80,9 @@ class ProfessionalIntegrationService {
         ),
       ]);
 
-      final weatherValidation = validationResults[0] as Map<String, dynamic>;
-      final soilValidation = validationResults[1] as Map<String, dynamic>;
-      final marketValidation = validationResults[2] as Map<String, dynamic>;
+      final weatherValidation = validationResults[0];
+      final soilValidation = validationResults[1];
+      final marketValidation = validationResults[2];
 
       // Générer les recommandations professionnelles
       final recommendations = await _generateProfessionalRecommendations(
@@ -105,11 +103,16 @@ class ProfessionalIntegrationService {
       );
 
       // Calculer le score de confiance global
+      final weatherConfMap = Map<String, dynamic>.from(weatherValidation);
+      final soilConfMap = Map<String, dynamic>.from(soilValidation);
+      final marketConfMap = Map<String, dynamic>.from(marketValidation);
+      final recConfMap = Map<String, dynamic>.from(recommendationsValidation);
+      
       final overallConfidence = _calculateOverallConfidence([
-        (weatherValidation['confidence'] ?? 0.0).toDouble(),
-        (soilValidation['confidence'] ?? 0.0).toDouble(),
-        (marketValidation['confidence'] ?? 0.0).toDouble(),
-        (recommendationsValidation['confidence'] ?? 0.0).toDouble(),
+        (weatherConfMap['confidence'] as num?)?.toDouble() ?? 0.0,
+        (soilConfMap['confidence'] as num?)?.toDouble() ?? 0.0,
+        (marketConfMap['confidence'] as num?)?.toDouble() ?? 0.0,
+        (recConfMap['confidence'] as num?)?.toDouble() ?? 0.0,
       ]);
 
       // Compiler l'analyse complète
@@ -156,11 +159,12 @@ class ProfessionalIntegrationService {
       };
 
       // Enregistrer l'analyse dans l'audit trail
+      final metadata = analysis['metadata'] as Map<String, dynamic>?;
       await AuditService.logDataAction(
         userId: userId,
         action: 'ANALYSIS_CREATED',
         dataType: 'PROFESSIONAL_ANALYSIS',
-        dataId: analysis['metadata']?['analysisId'] ?? 'unknown',
+        dataId: metadata?['analysisId'] ?? 'unknown',
         newData: analysis,
       );
 
@@ -417,38 +421,16 @@ class ProfessionalIntegrationService {
     double latitude,
     double longitude,
   ) {
-    // Logique de recommandation de cultures basée sur les données
-    final suitableCrops = <Map<String, dynamic>>[];
-
-    // Maïs
-    if (_isCropSuitable('mais', soilData, weatherData)) {
-      suitableCrops.add({
-        'name': 'Maïs',
-        'suitability': 0.85,
-        'expectedYield': 2.8,
-        'marketPrice': marketData['prices']?['mais']?['price'] ?? 150,
-        'plantingDate': _getOptimalPlantingDate('mais', weatherData),
-        'harvestDate': _getOptimalHarvestDate('mais', weatherData),
-      });
-    }
-
-    // Riz
-    if (_isCropSuitable('riz', soilData, weatherData)) {
-      suitableCrops.add({
-        'name': 'Riz',
-        'suitability': 0.90,
-        'expectedYield': 3.5,
-        'marketPrice': marketData['prices']?['riz']?['price'] ?? 200,
-        'plantingDate': _getOptimalPlantingDate('riz', weatherData),
-        'harvestDate': _getOptimalHarvestDate('riz', weatherData),
-      });
-    }
-
-    return {
-      'crops': suitableCrops,
-      'recommendedCrop': suitableCrops.isNotEmpty ? suitableCrops.first : null,
-      'priority': 'HIGH',
-    };
+    // Cette méthode doit utiliser les données réelles de marché et de sol
+    // Aucune donnée inventée n'est retournée
+    
+    // Les recommandations de cultures doivent être basées sur:
+    // - Les données de marché réelles (marketData)
+    // - Les données de sol réelles (soilData)
+    // - Les données météo réelles (weatherData)
+    // - Un service IA configuré pour calculer la compatibilité
+    
+    throw Exception('Les recommandations de cultures doivent être générées à partir de données réelles via un service IA configuré. Implémentez cette méthode pour utiliser des données réelles.');
   }
 
   static Map<String, dynamic> _generatePlantingRecommendations(
@@ -456,15 +438,13 @@ class ProfessionalIntegrationService {
     Map<String, dynamic> soilData,
     Map<String, dynamic> satelliteData,
   ) {
-    return {
-      'optimalDate': DateTime.now().add(Duration(days: 7)).toIso8601String(),
-      'preparation': [
-        'Préparer le sol 2 semaines avant la plantation',
-        'Vérifier l\'humidité du sol',
-        'Appliquer les engrais de base',
-      ],
-      'priority': 'HIGH',
-    };
+    // Cette méthode doit calculer la date optimale de plantation basée sur:
+    // - Les prévisions météo réelles (weatherData)
+    // - Les données de sol réelles (soilData)
+    // - Les données satellitaires réelles (satelliteData)
+    // - Les données historiques de plantation
+    
+    throw Exception('Les recommandations de plantation doivent être calculées à partir de données réelles (météo, sol, satellite). Implémentez cette méthode pour utiliser des données réelles.');
   }
 
   static Map<String, dynamic> _generateHarvestRecommendations(
@@ -472,23 +452,30 @@ class ProfessionalIntegrationService {
     Map<String, dynamic> satelliteData,
     Map<String, dynamic> marketData,
   ) {
-    return {
-      'optimalDate': DateTime.now().add(Duration(days: 120)).toIso8601String(),
-      'preparation': [
-        'Surveiller la maturité des cultures',
-        'Préparer les équipements de récolte',
-        'Planifier la commercialisation',
-      ],
-      'priority': 'MEDIUM',
-    };
+    // Cette méthode doit calculer la date optimale de récolte basée sur:
+    // - Les prévisions météo réelles (weatherData)
+    // - Les données satellitaires réelles (satelliteData - NDVI, etc.)
+    // - Les données de marché réelles (marketData)
+    // - Les données historiques de récolte
+    
+    throw Exception('Les recommandations de récolte doivent être calculées à partir de données réelles (météo, satellite, marché). Implémentez cette méthode pour utiliser des données réelles.');
   }
 
   static Map<String, dynamic> _generateMarketRecommendations(Map<String, dynamic> marketData) {
+    // Cette méthode doit utiliser les données de marché réelles uniquement
+    // Aucune donnée inventée n'est retournée
+    
+    if (marketData.isEmpty || marketData['prices'] == null) {
+      throw Exception('Les données de marché doivent être fournies. Impossibles de générer des recommandations sans données de marché réelles.');
+    }
+    
+    // Retourner uniquement les données réelles de marché
     return {
-      'bestTimeToSell': 'Matin (6h-10h)',
-      'expectedPrice': marketData['prices']?['mais']?['price'] ?? 150,
-      'marketTrend': marketData['prices']?['mais']?['trend'] ?? 'stable',
-      'priority': 'LOW',
+      'prices': marketData['prices'],
+      'trends': marketData['trends'],
+      'recommendations': marketData['recommendations'] ?? [],
+      'source': marketData['source'] ?? 'UNKNOWN',
+      'timestamp': marketData['timestamp'] ?? DateTime.now().toIso8601String(),
     };
   }
 
@@ -506,9 +493,12 @@ class ProfessionalIntegrationService {
     return confidences.reduce((a, b) => a + b) / confidences.length;
   }
 
-  static String _assessDataQuality(List<Map<String, dynamic>> validations) {
+  static String _assessDataQuality(List<dynamic> validations) {
     final avgConfidence = _calculateOverallConfidence(
-      validations.map((v) => (v['confidence'] as num?)?.toDouble() ?? 0.0).toList()
+      validations.map((v) {
+        final val = v as Map<String, dynamic>;
+        return (val['confidence'] as num?)?.toDouble() ?? 0.0;
+      }).toList()
     );
     
     if (avgConfidence >= 0.9) return 'EXCELLENT';
@@ -554,39 +544,24 @@ class ProfessionalIntegrationService {
   static Future<Map<String, dynamic>> _getSecurityStatistics(
     String userId, DateTime? startDate, DateTime? endDate
   ) async {
-    return {
-      'loginAttempts': 25,
-      'failedLogins': 2,
-      'securityEvents': 5,
-      'complianceScore': 98.0,
-    };
+    // Cette méthode doit récupérer les statistiques de sécurité réelles depuis le backend
+    // Aucune donnée inventée n'est retournée
+    
+    throw Exception('Les statistiques de sécurité doivent être récupérées depuis le backend avec les données réelles. Implémentez cette méthode pour utiliser les données réelles.');
   }
 
   static Future<Map<String, dynamic>> _getAuditStatistics(
     String userId, DateTime? startDate, DateTime? endDate
   ) async {
-    return {
-      'totalActions': 150,
-      'dataAccess': 75,
-      'dataModifications': 25,
-      'systemEvents': 50,
-    };
+    // Cette méthode doit récupérer les statistiques d'audit réelles depuis le backend
+    // Aucune donnée inventée n'est retournée
+    
+    throw Exception('Les statistiques d\'audit doivent être récupérées depuis le backend avec les données réelles. Implémentez cette méthode pour utiliser les données réelles.');
   }
 
-  // Méthodes de validation des cultures
-
-  static bool _isCropSuitable(String crop, Map<String, dynamic> soilData, Map<String, dynamic> weatherData) {
-    // Logique de validation basée sur les données de sol et météo
-    return true; // Simplifié pour l'exemple
-  }
-
-  static String _getOptimalPlantingDate(String crop, Map<String, dynamic> weatherData) {
-    return DateTime.now().add(Duration(days: 7)).toIso8601String();
-  }
-
-  static String _getOptimalHarvestDate(String crop, Map<String, dynamic> weatherData) {
-    return DateTime.now().add(Duration(days: 120)).toIso8601String();
-  }
+  // Les méthodes _isCropSuitable, _getOptimalPlantingDate et _getOptimalHarvestDate ont été supprimées
+  // car elles généraient des données inventées. Ces validations doivent être faites à partir
+  // de données réelles (météo, satellite, historique) via un service IA configuré
 
   static String _assessWeatherRisk(double temp, double humidity, double precipitation) {
     if (temp > 35 || humidity > 85 || precipitation > 100) return 'HIGH';

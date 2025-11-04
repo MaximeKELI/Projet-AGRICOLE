@@ -1,7 +1,7 @@
-import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'real_weather_service.dart';
+import 'package:http/http.dart' as http;
 
 class WeatherData {
   final String location;
@@ -192,7 +192,7 @@ class WeatherService {
     print('WeatherService initialized.');
   }
 
-  // Obtenir la météo actuelle
+  // Obtenir la météo actuelle - UNIQUEMENT depuis le backend NodeJS avec données réelles
   static Future<WeatherData> getCurrentWeather(String location) async {
     try {
       // Parser les coordonnées si c'est une chaîne de coordonnées
@@ -203,24 +203,68 @@ class WeatherService {
         lon = double.tryParse(coords[1]);
       }
       
-      // Utiliser le service météo réel si on a des coordonnées
+      // Si on a des coordonnées, utiliser le backend NodeJS
       if (lat != null && lon != null) {
+        try {
+          final response = await http.get(
+            Uri.parse('http://localhost:5000/api/weather/current?latitude=$lat&longitude=$lon'),
+            headers: {'Content-Type': 'application/json'},
+          ).timeout(const Duration(seconds: 10));
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            
+            // Vérifier que toutes les données requises sont présentes
+            if (data['temperature'] == null || data['humidity'] == null) {
+              throw Exception('Données météo incomplètes depuis le backend');
+            }
+            
+            final weather = WeatherData(
+              location: data['location'] ?? location,
+              temperature: data['temperature'].toDouble(),
+              humidity: data['humidity'].toDouble(),
+              windSpeed: (data['windSpeed'] ?? 0.0).toDouble(),
+              windDirection: _getWindDirectionFromDegrees((data['windDirection'] ?? 0.0).toDouble()),
+              pressure: (data['pressure'] ?? 0.0).toDouble(),
+              visibility: (data['visibility'] ?? 0.0).toDouble(),
+              condition: data['condition'] ?? 'Unknown',
+              description: data['description'] ?? '',
+              uvIndex: (data['uvIndex'] ?? 0.0).toDouble(),
+              rainfall: (data['rainfall'] ?? 0.0).toDouble(),
+              timestamp: DateTime.parse(data['timestamp'] ?? DateTime.now().toIso8601String()),
+            );
+
+            _currentWeather[location] = weather;
+            _weatherController.add(weather);
+            return weather;
+          } else {
+            throw Exception('Erreur API: ${response.statusCode}');
+          }
+        } catch (e) {
+          print('Erreur lors de l\'appel au backend: $e');
+          // Tentative avec le service météo réel en fallback
+          try {
         final realWeatherData = await RealWeatherService.getCurrentWeather(
           latitude: lat,
           longitude: lon,
         );
+            
+            // Vérifier que les données réelles sont présentes
+            if (realWeatherData['temperature'] == null || realWeatherData['humidity'] == null) {
+              throw Exception('Données météo incomplètes depuis RealWeatherService');
+            }
         
         final weather = WeatherData(
           location: realWeatherData['location'] ?? location,
-          temperature: realWeatherData['temperature'] ?? 25.0,
-          humidity: realWeatherData['humidity'] ?? 60.0,
-          windSpeed: realWeatherData['windSpeed'] ?? 5.0,
+              temperature: realWeatherData['temperature'],
+              humidity: realWeatherData['humidity'],
+              windSpeed: realWeatherData['windSpeed'] ?? 0.0,
           windDirection: _getWindDirectionFromDegrees(realWeatherData['windDirection'] ?? 0.0),
-          pressure: realWeatherData['pressure'] ?? 1010.0,
-          visibility: realWeatherData['visibility'] ?? 8.0,
-          condition: realWeatherData['condition'] ?? 'Ensoleillé',
-          description: realWeatherData['description'] ?? 'Conditions normales',
-          uvIndex: realWeatherData['uvIndex'] ?? 5.0,
+              pressure: realWeatherData['pressure'] ?? 0.0,
+              visibility: realWeatherData['visibility'] ?? 0.0,
+              condition: realWeatherData['condition'] ?? 'Unknown',
+              description: realWeatherData['description'] ?? '',
+              uvIndex: realWeatherData['uvIndex'] ?? 0.0,
           rainfall: realWeatherData['rainfall'] ?? 0.0,
           timestamp: DateTime.now(),
         );
@@ -228,109 +272,201 @@ class WeatherService {
         _currentWeather[location] = weather;
         _weatherController.add(weather);
         return weather;
+          } catch (fallbackError) {
+            print('Erreur fallback météo: $fallbackError');
+            // Si aucune source de données n'est disponible, lancer une erreur
+            throw Exception('Impossible de récupérer les données météo. Veuillez vérifier votre connexion et la configuration de l\'API OpenWeather.');
+          }
+        }
       }
+      
+      // Si les coordonnées ne sont pas valides, lancer une erreur
+      throw Exception('Impossible de parser les coordonnées de la location. Format attendu: "latitude,longitude" ou coordonnées valides.');
     } catch (e) {
-      print('Erreur météo réelle: $e');
+      print('Erreur météo: $e');
+      // Si aucune donnée n'est disponible, retourner une erreur plutôt que des données fictives
+      throw Exception('Impossible de récupérer les données météo. Veuillez vérifier votre connexion et la configuration de l\'API.');
     }
-    
-    // Fallback vers données simulées si erreur
-    await Future.delayed(const Duration(seconds: 1));
-    final random = Random();
-
-    final weather = WeatherData(
-      location: location,
-      temperature: 25.0 + random.nextDouble() * 10, // 25-35°C
-      humidity: 60.0 + random.nextDouble() * 30, // 60-90%
-      windSpeed: 5.0 + random.nextDouble() * 15, // 5-20 km/h
-      windDirection: _getRandomWindDirection(),
-      pressure: 1010 + random.nextDouble() * 20, // 1010-1030 hPa
-      visibility: 8.0 + random.nextDouble() * 4, // 8-12 km
-      condition: _getRandomCondition(),
-      description: _getRandomDescription(),
-      uvIndex: 3.0 + random.nextDouble() * 8, // 3-11
-      rainfall: random.nextDouble() * 5, // 0-5 mm
-      timestamp: DateTime.now(),
-    );
-
-    _currentWeather[location] = weather;
-    _weatherController.add(weather);
-    return weather;
   }
 
-  // Obtenir les prévisions météo
+  // Obtenir les prévisions météo - UNIQUEMENT depuis le backend NodeJS avec données réelles
   static Future<List<WeatherForecast>> getWeatherForecast(String location, {int days = 3}) async {
-    await Future.delayed(const Duration(seconds: 1));
-    final random = Random();
-    final List<WeatherForecast> forecasts = [];
+    try {
+      // Parser les coordonnées si c'est une chaîne de coordonnées
+      double? lat, lon;
+      if (location.contains(',')) {
+        final coords = location.split(',');
+        lat = double.tryParse(coords[0]);
+        lon = double.tryParse(coords[1]);
+      }
+      
+      // Si on a des coordonnées, utiliser le backend NodeJS
+      if (lat != null && lon != null) {
+        try {
+          final response = await http.get(
+            Uri.parse('http://localhost:5000/api/weather/forecast?latitude=$lat&longitude=$lon&days=$days'),
+            headers: {'Content-Type': 'application/json'},
+          ).timeout(const Duration(seconds: 10));
 
-    for (int i = 1; i <= days; i++) {
-      forecasts.add(
-        WeatherForecast(
-          location: location,
-          date: DateTime.now().add(Duration(days: i)),
-          minTemperature: 20.0 + random.nextDouble() * 5,
-          maxTemperature: 28.0 + random.nextDouble() * 7,
-          humidity: 65.0 + random.nextDouble() * 20,
-          windSpeed: 8.0 + random.nextDouble() * 12,
-          condition: _getRandomCondition(),
-          description: _getRandomDescription(),
-          rainfall: random.nextDouble() * 3,
-          uvIndex: 3.0 + random.nextDouble() * 8,
-        ),
-      );
-    }
+          if (response.statusCode == 200) {
+            final List<dynamic> data = jsonDecode(response.body);
+            final forecasts = data.map((item) {
+              // Vérifier que les données requises sont présentes
+              if (item['date'] == null || item['minTemperature'] == null || item['maxTemperature'] == null) {
+                throw Exception('Données de prévision incomplètes');
+              }
+              
+              return WeatherForecast(
+                location: item['location'] ?? location,
+                date: DateTime.parse(item['date']),
+                minTemperature: item['minTemperature'].toDouble(),
+                maxTemperature: item['maxTemperature'].toDouble(),
+                humidity: (item['humidity'] ?? 0.0).toDouble(),
+                windSpeed: (item['windSpeed'] ?? 0.0).toDouble(),
+                condition: item['condition'] ?? 'Unknown',
+                description: item['description'] ?? '',
+                rainfall: (item['rainfall'] ?? 0.0).toDouble(),
+                uvIndex: (item['uvIndex'] ?? 0.0).toDouble(),
+              );
+            }).toList();
+
+            _forecasts[location] = forecasts;
+            return forecasts;
+          } else {
+            throw Exception('Erreur API: ${response.statusCode}');
+          }
+        } catch (e) {
+          print('Erreur lors de l\'appel au backend: $e');
+          // Fallback vers le service météo réel
+          final realForecasts = await RealWeatherService.getWeatherForecast(
+            latitude: lat,
+            longitude: lon,
+            days: days,
+          );
+          
+          final forecasts = realForecasts.map((item) {
+            // Vérifier que les données requises sont présentes
+            if (item['date'] == null || item['temperatureMin'] == null || item['temperatureMax'] == null) {
+              throw Exception('Données de prévision incomplètes depuis RealWeatherService');
+            }
+            
+            return WeatherForecast(
+              location: item['city'] ?? location,
+              date: DateTime.parse(item['date']),
+              minTemperature: item['temperatureMin'].toDouble(),
+              maxTemperature: item['temperatureMax'].toDouble(),
+              humidity: (item['humidity'] ?? 0.0).toDouble(),
+              windSpeed: (item['windSpeed'] ?? 0.0).toDouble(),
+              condition: item['main'] ?? 'Unknown',
+              description: item['description'] ?? '',
+              rainfall: (item['precipitation'] ?? 0.0).toDouble(),
+              uvIndex: (item['uv'] ?? 0.0).toDouble(),
+            );
+          }).toList();
 
     _forecasts[location] = forecasts;
     return forecasts;
-  }
-
-  // Obtenir les alertes météo
-  static Future<List<WeatherAlert>> getWeatherAlerts(String location) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final random = Random();
-    
-    if (random.nextBool()) {
-      final alert = WeatherAlert(
-        id: 'alert_${DateTime.now().millisecondsSinceEpoch}',
-        location: location,
-        type: _getRandomAlertType(),
-        severity: _getRandomSeverity(),
-        title: _getAlertTitle(_getRandomAlertType()),
-        description: _getAlertDescription(_getRandomAlertType(), _getRandomSeverity()),
-        startTime: DateTime.now(),
-        endTime: DateTime.now().add(const Duration(hours: 24)),
-        recommendations: _getAlertRecommendations(_getRandomAlertType()),
-      );
+        } catch (fallbackError) {
+          print('Erreur fallback prévisions: $fallbackError');
+          throw Exception('Impossible de récupérer les prévisions météo. Veuillez vérifier votre connexion et la configuration de l\'API OpenWeather.');
+        }
+      }
       
-      _alerts.add(alert);
-      _alertController.add(alert);
+      // Si les coordonnées ne sont pas valides, lancer une erreur
+      throw Exception('Impossible de parser les coordonnées de la location. Format attendu: "latitude,longitude" ou coordonnées valides.');
+    } catch (e) {
+      print('Erreur prévisions: $e');
+      throw Exception('Impossible de récupérer les prévisions météo. Veuillez vérifier votre connexion et la configuration de l\'API.');
     }
-
-    return _alerts;
   }
 
-  // Obtenir les recommandations agricoles
-  static Future<List<String>> getAgriculturalRecommendations(String location) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    final random = Random();
-    
-    final recommendations = [
-      'Irriguer les cultures le matin tôt',
-      'Surveiller les signes de stress hydrique',
-      'Ajuster la fertilisation selon les conditions',
-      'Protéger les cultures sensibles au vent',
-      'Planifier les récoltes selon la météo',
-    ];
+  // Obtenir les alertes météo - UNIQUEMENT depuis le backend NodeJS avec données réelles
+  static Future<List<WeatherAlert>> getWeatherAlerts(String location) async {
+    try {
+      // Essayer d'abord le backend NodeJS
+      final response = await http.get(
+        Uri.parse('http://localhost:5000/api/weather/alerts'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 5));
 
-    return recommendations.take(2 + random.nextInt(3)).toList();
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        final alerts = data.map((item) {
+          final recommendationsJson = item['recommendations'];
+          final recommendations = recommendationsJson != null 
+            ? (recommendationsJson is String ? jsonDecode(recommendationsJson) : recommendationsJson)
+            : <String>[];
+          
+          return WeatherAlert(
+            id: item['id'],
+            location: item['location'] ?? location,
+            type: item['type'],
+            severity: item['severity'],
+            title: item['title'],
+            description: item['description'] ?? '',
+            startTime: DateTime.parse(item['startTime']),
+            endTime: DateTime.parse(item['endTime']),
+            recommendations: List<String>.from(recommendations),
+          );
+        }).toList();
+
+        _alerts.clear();
+        _alerts.addAll(alerts);
+        return alerts;
+      }
+    } catch (e) {
+      print('Erreur lors de la récupération des alertes: $e');
+      // Si aucune alerte n'est disponible, retourner une liste vide plutôt que des données fictives
+      return [];
+    }
+    
+    return [];
+  }
+
+  // Obtenir les recommandations agricoles - depuis les données météo réelles
+  static Future<List<String>> getAgriculturalRecommendations(String location) async {
+    try {
+      // Récupérer la météo actuelle pour générer des recommandations basées sur les vraies données
+      final weather = await getCurrentWeather(location);
+      
+      final recommendations = <String>[];
+      
+      // Recommandations basées sur les vraies données météo
+      if (weather.temperature > 35) {
+        recommendations.add('Température élevée: Augmenter l\'irrigation et fournir de l\'ombrage aux cultures sensibles');
+      }
+      
+      if (weather.temperature < 15) {
+        recommendations.add('Température basse: Protéger les cultures sensibles au froid');
+      }
+      
+      if (weather.humidity < 40) {
+        recommendations.add('Humidité faible: Irrigation recommandée pour maintenir l\'humidité du sol');
+      }
+      
+      if (weather.rainfall > 20) {
+        recommendations.add('Pluies abondantes: Vérifier le drainage des champs et protéger les cultures sensibles');
+      }
+      
+      if (weather.windSpeed > 30) {
+        recommendations.add('Vents forts: Protéger les cultures et les équipements');
+      }
+      
+      if (weather.rainfall == 0 && weather.humidity < 50) {
+        recommendations.add('Conditions sèches: Planifier l\'irrigation d\'urgence');
+      }
+      
+      // Si aucune recommandation spécifique, retourner une recommandation générale
+      return recommendations.isNotEmpty 
+        ? recommendations 
+        : ['Conditions météorologiques favorables pour les activités agricoles'];
+    } catch (e) {
+      print('Erreur lors de la récupération des recommandations: $e');
+      return ['Impossible de générer des recommandations. Vérifiez votre connexion.'];
+    }
   }
 
   // Méthodes utilitaires
-  static String _getRandomWindDirection() {
-    final directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-    return directions[Random().nextInt(directions.length)];
-  }
-
   static String _getWindDirectionFromDegrees(double degrees) {
     if (degrees >= 337.5 || degrees < 22.5) return 'N';
     if (degrees >= 22.5 && degrees < 67.5) return 'NE';
@@ -343,31 +479,7 @@ class WeatherService {
     return 'N';
   }
 
-  static String _getRandomCondition() {
-    final conditions = ['Ensoleillé', 'Nuageux', 'Partiellement nuageux', 'Pluvieux', 'Orageux'];
-    return conditions[Random().nextInt(conditions.length)];
-  }
-
-  static String _getRandomDescription() {
-    final descriptions = [
-      'Ciel dégagé',
-      'Quelques nuages',
-      'Nuages épars',
-      'Averses légères',
-      'Pluie modérée',
-    ];
-    return descriptions[Random().nextInt(descriptions.length)];
-  }
-
-  static String _getRandomAlertType() {
-    final types = ['storm', 'flood', 'drought', 'heat_wave', 'cold_wave'];
-    return types[Random().nextInt(types.length)];
-  }
-
-  static String _getRandomSeverity() {
-    final severities = ['low', 'medium', 'high', 'extreme'];
-    return severities[Random().nextInt(severities.length)];
-  }
+  // Méthodes avec Random() supprimées - elles ne sont plus utilisées car toutes les données viennent du backend
 
   static String _getAlertTitle(String type) {
     switch (type) {

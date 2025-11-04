@@ -146,7 +146,7 @@ class AgriculturalService {
     return DashboardSummary.fromMetrics(metrics);
   }
 
-  // Obtenir les prédictions de rendement
+  // Obtenir les prédictions de rendement - UNIQUEMENT depuis le backend avec données réelles
   Future<Map<String, dynamic>> getYieldPredictions(String cropType, String region) async {
     try {
       final response = await http.get(
@@ -156,87 +156,14 @@ class AgriculturalService {
 
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
+      } else {
+        throw Exception('Endpoint de prédiction non disponible');
       }
     } catch (e) {
       print('Erreur lors de la prédiction: $e');
+      // Si les données n'existent pas, retourner une erreur claire au lieu de données inventées
+      throw Exception('Impossible d\'obtenir les prédictions. Les données de prédiction doivent être fournies par l\'admin ou un service IA configuré.');
     }
-
-    // Fallback: prédiction basique
-    return _getBasicYieldPrediction(cropType, region);
-  }
-
-  Map<String, dynamic> _getBasicYieldPrediction(String cropType, String region) {
-    // Prédictions basiques basées sur les données moyennes du Togo
-    final baseYields = {
-      'maïs': 2.5, // tonnes/hectare
-      'riz': 3.0,
-      'arachide': 1.5,
-      'manioc': 15.0,
-      'igname': 8.0,
-      'tomate': 25.0,
-      'piment': 20.0,
-      'gombo': 15.0,
-    };
-
-    final baseYield = baseYields[cropType.toLowerCase()] ?? 2.0;
-    final seasonalFactor = _getSeasonalFactor();
-    final regionFactor = _getRegionFactor(region);
-
-    final predictedYield = baseYield * seasonalFactor * regionFactor;
-    final confidence = 0.75; // 75% de confiance
-
-    return {
-      'predictedYield': predictedYield,
-      'confidence': confidence,
-      'factors': {
-        'baseYield': baseYield,
-        'seasonalFactor': seasonalFactor,
-        'regionFactor': regionFactor,
-      },
-      'recommendations': _getYieldRecommendations(cropType, predictedYield),
-    };
-  }
-
-  double _getSeasonalFactor() {
-    final month = DateTime.now().month;
-    // Facteurs saisonniers pour le Togo
-    if (month >= 3 && month <= 6) return 1.2; // Grande saison des pluies
-    if (month >= 9 && month <= 11) return 1.1; // Petite saison des pluies
-    return 0.8; // Saison sèche
-  }
-
-  double _getRegionFactor(String region) {
-    // Facteurs régionaux basés sur la fertilité des sols
-    final regionFactors = {
-      'Maritime': 1.0,
-      'Plateaux': 1.1,
-      'Centrale': 1.2,
-      'Kara': 0.9,
-      'Savanes': 0.8,
-    };
-    return regionFactors[region] ?? 1.0;
-  }
-
-  List<String> _getYieldRecommendations(String cropType, double predictedYield) {
-    final recommendations = <String>[];
-
-    if (predictedYield < 2.0) {
-      recommendations.add('Fertilisation NPK recommandée');
-      recommendations.add('Vérifier la qualité des semences');
-      recommendations.add('Améliorer la préparation du sol');
-    }
-
-    if (cropType.toLowerCase() == 'maïs') {
-      recommendations.add('Espacement recommandé: 80cm x 40cm');
-      recommendations.add('Irrigation nécessaire pendant la floraison');
-    }
-
-    if (cropType.toLowerCase() == 'riz') {
-      recommendations.add('Niveau d\'eau: 5-10cm pendant la croissance');
-      recommendations.add('Drainage 2 semaines avant récolte');
-    }
-
-    return recommendations;
   }
 
   // Obtenir les alertes agricoles
